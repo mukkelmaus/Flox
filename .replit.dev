@@ -1,14 +1,1 @@
-run = "python main_uvicorn.py"
-language = "python3"
-entrypoint = "main_uvicorn.py"
-
-[unitTest]
-language = "python3"
-
-[env]
-VIRTUAL_ENV = "/home/runner/${REPL_SLUG}/venv"
-PATH = "${VIRTUAL_ENV}/bin"
-PYTHONPATH = "$PYTHONHOME/lib/python3.10:${VIRTUAL_ENV}/lib/python3.10/site-packages"
-REPLIT_POETRY_PYPI_REPOSITORY = "https://package-proxy.replit.com/pypi/"
-MPLBACKEND = "TkAgg"
-PYTHONUNBUFFERED = "1"
+python main_uvicorn.py
