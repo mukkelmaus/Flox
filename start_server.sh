@@ -1,3 +1,4 @@
 #!/bin/bash
-# Start the FastAPI application with Gunicorn using Uvicorn workers
-gunicorn -k uvicorn.workers.UvicornWorker -c gunicorn_conf.py wsgi:app
+
+# Start the application using Uvicorn directly
+python -m uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload

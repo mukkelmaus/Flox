@@ -1,5 +1,5 @@
 """
-Server startup file for FastAPI with uvicorn
+Run script for Uvicorn to start the FastAPI application
 """
 import uvicorn
 

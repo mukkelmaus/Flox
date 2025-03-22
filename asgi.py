@@ -1,42 +1,18 @@
 """
-ASGI bridge adapter for compatibility with WSGI servers
+ASGI application for Gunicorn+Uvicorn compatibility
 
-This adapter helps translate between WSGI and ASGI, allowing
-FastAPI to be served by Gunicorn's standard worker.
+This file serves as the entry point for Gunicorn when using UvicornWorker.
 """
-import asyncio
-from app.main import app as fastapi_app
+import uvicorn
 
-class ASGIMiddleware:
-    """
-    Adapter middleware to convert WSGI requests to ASGI
-    """
-    def __init__(self, app):
-        self.app = app
+# Import the FastAPI app
+from app.main import app
 
-    def __call__(self, environ, start_response):
-        """
-        Handle WSGI requests and route them through the ASGI application
-        """
-        path = environ.get('PATH_INFO', '/')
-        method = environ.get('REQUEST_METHOD', 'GET')
-        
-        if path == '/':
-            # Special handling for the root path
-            status = '200 OK'
-            headers = [('Content-type', 'application/json')]
-            start_response(status, headers)
-            return [b'{"status":"ok","message":"OneTask API is running","version":"0.1.0"}']
-        else:
-            # For other paths, use standard response
-            status = '200 OK'
-            headers = [('Content-type', 'application/json')]
-            start_response(status, headers)
-            return [b'{"status":"ok","message":"API endpoint ready"}']
-
-# Create a WSGI application from our FastAPI app
-app = ASGIMiddleware(fastapi_app)
+# Create a callable for Gunicorn
+# This won't be called directly with UvicornWorker, but is needed
+# for configuration and discovery
+application = app
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(fastapi_app, host="0.0.0.0", port=5000)
+    # For direct execution without Gunicorn
+    uvicorn.run("asgi:application", host="0.0.0.0", port=5000, reload=True)
