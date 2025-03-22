@@ -67,7 +67,7 @@ def test_user(db_session):
     user = User(
         username="testuser",
         email="test@example.com",
-        password_hash=get_password_hash("password123"),
+        password_hash=get_password_hash("password"),
         is_active=True
     )
     db_session.add(user)
@@ -84,7 +84,7 @@ def test_superuser(db_session):
     user = User(
         username="testsuperuser",
         email="testsuperuser@example.com",
-        password_hash=get_password_hash("password123"),
+        password_hash=get_password_hash("password"),
         is_active=True,
         is_superuser=True,
     )
