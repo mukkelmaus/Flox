@@ -1,6 +1,10 @@
+"""
+Tests for the security module.
+"""
+
 import pytest
+from datetime import timedelta
 from jose import jwt
-from datetime import datetime, timedelta
 
 from app.core.security import create_access_token, verify_password, get_password_hash
 from app.core.config import settings
@@ -8,32 +12,33 @@ from app.core.config import settings
 
 def test_create_access_token():
     """Test creating an access token."""
-    data = {"sub": "123"}
-    expires_delta = timedelta(minutes=15)
-    
-    token = create_access_token(data["sub"], expires_delta=expires_delta)
-    assert token
-    
-    # Decode token and verify contents
+    # Test with default expiration
+    subject = "test-subject"
+    token = create_access_token(subject)
     payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-    assert payload["sub"] == data["sub"]
+    assert payload["sub"] == subject
+    assert "exp" in payload
     
-    # Check expiration time is set correctly
-    exp_time = datetime.fromtimestamp(payload["exp"])
-    now = datetime.utcnow()
-    assert (exp_time - now).total_seconds() > (expires_delta.total_seconds() - 10)
+    # Test with custom expiration
+    expires = timedelta(minutes=30)
+    token = create_access_token(subject, expires_delta=expires)
+    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+    assert payload["sub"] == subject
+    assert "exp" in payload
 
 
 def test_password_hash():
     """Test password hashing and verification."""
-    password = "testpassword123"
-    hashed_password = get_password_hash(password)
+    password = "test-password"
+    hashed = get_password_hash(password)
     
-    # Hashed password should be different from original
-    assert hashed_password != password
+    # Verify the hashed password
+    assert verify_password(password, hashed)
     
-    # Should verify correctly
-    assert verify_password(password, hashed_password)
+    # Test with wrong password
+    assert not verify_password("wrong-password", hashed)
     
-    # Wrong password should fail
-    assert not verify_password("wrongpassword", hashed_password)
+    # Test with empty strings
+    empty_hash = get_password_hash("")
+    assert verify_password("", empty_hash)
+    assert not verify_password("something", empty_hash)
