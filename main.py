@@ -1,4 +1,10 @@
-from asgi import app
+"""
+Gunicorn entry point for the FastAPI application
 
-# This file serves as the entry point for Gunicorn
-# The app variable is now using our ASGI-to-WSGI adapter from asgi.py
+This is a simple WSGI wrapper for the FastAPI application 
+to make it compatible with the Replit workflow system.
+
+For production, use the wsgi.py file with the Uvicorn worker.
+"""
+# Direct import of the app for simplified testing in Replit
+from wsgi import app

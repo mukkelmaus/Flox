@@ -1,5 +1,5 @@
 """
-Gunicorn configuration file
+Gunicorn configuration file for FastAPI application
 """
 from multiprocessing import cpu_count
 
@@ -11,7 +11,7 @@ workers = cpu_count() + 1
 worker_class = "uvicorn.workers.UvicornWorker"
 
 # Logging Options
-loglevel = "info"
+loglevel = "debug"
 accesslog = "-"
 errorlog = "-"
 
