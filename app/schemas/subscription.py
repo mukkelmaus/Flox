@@ -58,7 +58,7 @@ class Subscription(SubscriptionBase):
     cancelled_at: Optional[datetime] = None
     next_billing_date: Optional[datetime] = None
     billing_details: Optional[Dict[str, Any]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    additional_data: Optional[Dict[str, Any]] = None
     
     class Config:
         orm_mode = True

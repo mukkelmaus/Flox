@@ -1,34 +1,27 @@
-from typing import Any, List, Optional
+"""
+Task management endpoints for the OneTask API.
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+These endpoints handle CRUD operations for tasks, as well as advanced features like:
+- Task prioritization
+- Task breakdown
+- Focus mode filtering
+"""
+
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app import models, schemas
 from app.core.security import get_current_active_user
 from app.db.session import get_db
-from app.models.user import User
-from app.schemas.task import (
-    Task,
-    TaskCreate,
-    TaskUpdate,
-    TaskFocusMode,
-    TaskWithSubtasks,
-)
-from app.services.task_service import (
-    create_task,
-    get_task,
-    get_tasks,
-    update_task,
-    delete_task,
-    prioritize_tasks,
-    get_focus_mode_tasks,
-    mark_task_completed,
-    get_task_history,
-)
+from app.services import ai_service, task_service
+from app.utils.dependencies import verify_premium_access
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[Task])
+@router.get("/", response_model=List[schemas.Task])
 def read_tasks(
     db: Session = Depends(get_db),
     skip: int = 0,
@@ -36,18 +29,15 @@ def read_tasks(
     workspace_id: Optional[int] = None,
     status: Optional[str] = None,
     priority: Optional[str] = None,
-    current_user: User = Depends(get_current_active_user),
+    current_user: models.User = Depends(get_current_active_user),
 ) -> Any:
     """
     Retrieve tasks.
     
-    - **skip**: Number of tasks to skip (pagination)
-    - **limit**: Maximum number of tasks to return
-    - **workspace_id**: Filter by workspace ID
-    - **status**: Filter by status (todo, in_progress, done)
-    - **priority**: Filter by priority (low, medium, high, urgent)
+    - Support filtering by workspace, status, and priority
+    - Pagination with skip and limit parameters
     """
-    tasks = get_tasks(
+    tasks = task_service.get_tasks(
         db=db,
         user_id=current_user.id,
         skip=skip,
@@ -59,96 +49,172 @@ def read_tasks(
     return tasks
 
 
-@router.post("/", response_model=Task, status_code=status.HTTP_201_CREATED)
-def create_new_task(
+@router.post("/", response_model=schemas.Task)
+def create_task(
     *,
     db: Session = Depends(get_db),
-    task_in: TaskCreate,
-    current_user: User = Depends(get_current_active_user),
+    task_in: schemas.TaskCreate,
+    current_user: models.User = Depends(get_current_active_user),
 ) -> Any:
     """
-    Create new task.
+    Create a new task.
     
-    - **title**: Task title (required)
-    - **description**: Detailed description
-    - **due_date**: Due date (ISO format)
-    - **priority**: Priority level (low, medium, high, urgent)
-    - **status**: Task status (todo, in_progress, done)
-    - **tags**: List of tags
-    - **workspace_id**: Workspace ID
+    - All fields in the TaskCreate schema can be provided
+    - User ID is automatically added based on authentication
     """
-    task = create_task(db=db, task_in=task_in, user_id=current_user.id)
+    task = task_service.create_task(db=db, task_in=task_in, user_id=current_user.id)
     return task
 
 
-@router.get("/prioritize", response_model=List[Task])
-def get_prioritized_tasks(
+@router.get("/{task_id}", response_model=schemas.TaskWithSubtasks)
+def read_task(
+    *,
     db: Session = Depends(get_db),
-    skip: int = 0,
-    limit: int = 100,
-    workspace_id: Optional[int] = None,
-    current_user: User = Depends(get_current_active_user),
+    task_id: int,
+    current_user: models.User = Depends(get_current_active_user),
 ) -> Any:
     """
-    Get automatically prioritized tasks based on various factors.
+    Get a specific task by ID.
     
-    - **skip**: Number of tasks to skip (pagination)
-    - **limit**: Maximum number of tasks to return
-    - **workspace_id**: Filter by workspace ID
+    - Includes subtasks in the response
+    - Only accessible if the task belongs to the current user
     """
-    tasks = prioritize_tasks(
+    task = task_service.get_task(db=db, task_id=task_id, user_id=current_user.id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+
+@router.put("/{task_id}", response_model=schemas.Task)
+def update_task(
+    *,
+    db: Session = Depends(get_db),
+    task_id: int,
+    task_in: schemas.TaskUpdate,
+    current_user: models.User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Update a task.
+    
+    - Any fields in the TaskUpdate schema can be provided
+    - Only fields that are provided will be updated
+    - Only accessible if the task belongs to the current user
+    """
+    task = task_service.get_task(db=db, task_id=task_id, user_id=current_user.id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task = task_service.update_task(db=db, task=task, task_in=task_in)
+    return task
+
+
+@router.delete("/{task_id}", response_model=schemas.Task)
+def delete_task(
+    *,
+    db: Session = Depends(get_db),
+    task_id: int,
+    current_user: models.User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Delete a task.
+    
+    - Soft delete (is_deleted flag is set to True)
+    - Task can still be recovered if needed
+    - Only accessible if the task belongs to the current user
+    """
+    task = task_service.get_task(db=db, task_id=task_id, user_id=current_user.id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task_service.delete_task(db=db, task_id=task_id)
+    return task
+
+
+@router.post("/prioritize", response_model=List[schemas.Task])
+def prioritize_tasks(
+    *,
+    db: Session = Depends(get_db),
+    workspace_id: Optional[int] = Body(None),
+    current_user: models.User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Automatically prioritize tasks based on various factors.
+    
+    - Uses AI to analyze task importance, deadlines, and user patterns
+    - Optionally filter by workspace
+    - Returns a prioritized list of tasks
+    """
+    tasks = task_service.prioritize_tasks(
         db=db,
         user_id=current_user.id,
-        skip=skip,
-        limit=limit,
         workspace_id=workspace_id,
     )
     return tasks
 
 
-@router.get("/focus", response_model=TaskFocusMode)
-def get_focus_mode(
+@router.post("/{task_id}/complete", response_model=schemas.Task)
+def mark_task_completed(
+    *,
     db: Session = Depends(get_db),
-    context: Optional[str] = Query(None, description="Current work context"),
-    time_available: Optional[int] = Query(None, description="Time available in minutes"),
-    energy_level: Optional[int] = Query(None, description="Energy level (1-5)"),
-    current_user: User = Depends(get_current_active_user),
+    task_id: int,
+    current_user: models.User = Depends(get_current_active_user),
 ) -> Any:
     """
-    Get focus mode tasks based on context, time available, and energy level.
+    Mark a task as completed.
     
-    - **context**: Current work context (e.g., "work", "personal", "study")
-    - **time_available**: Time available in minutes
-    - **energy_level**: Current energy level (1-5)
+    - Sets status to "done" and records completion timestamp
+    - Updates task history
+    - Only accessible if the task belongs to the current user
     """
-    focus_tasks = get_focus_mode_tasks(
+    task = task_service.get_task(db=db, task_id=task_id, user_id=current_user.id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task = task_service.mark_task_completed(db=db, task=task)
+    return task
+
+
+@router.get("/focus-mode", response_model=schemas.TaskFocusMode)
+def get_focus_mode_tasks(
+    *,
+    db: Session = Depends(get_db),
+    context: Optional[str] = Query(None, description="Current work context (e.g., 'work', 'personal', 'study')"),
+    time_available: Optional[int] = Query(None, description="Time available in minutes"),
+    energy_level: Optional[int] = Query(None, ge=1, le=5, description="Current energy level (1-5)"),
+    current_user: models.User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Get tasks for focus mode based on context, time available, and energy level.
+    
+    - Provides a manageable set of tasks for the current focus session
+    - Filters tasks based on user's context, available time, and energy level
+    - Returns a primary task and a queue of next tasks
+    """
+    focus_mode = task_service.get_focus_mode_tasks(
         db=db,
         user_id=current_user.id,
         context=context,
         time_available=time_available,
         energy_level=energy_level,
     )
-    return focus_tasks
+    return focus_mode
 
 
-@router.get("/history", response_model=List[Task])
-def read_task_history(
+@router.get("/history", response_model=List[schemas.Task])
+def get_task_history(
+    *,
     db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 100,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    current_user: User = Depends(get_current_active_user),
+    start_date: Optional[str] = Query(None, description="Start date (ISO format)"),
+    end_date: Optional[str] = Query(None, description="End date (ISO format)"),
+    current_user: models.User = Depends(get_current_active_user),
 ) -> Any:
     """
-    Retrieve completed task history.
+    Get completed task history.
     
-    - **skip**: Number of tasks to skip (pagination)
-    - **limit**: Maximum number of tasks to return
-    - **start_date**: Start date (ISO format)
-    - **end_date**: End date (ISO format)
+    - Returns completed tasks within the specified date range
+    - Supports pagination
+    - Only returns tasks that belong to the current user
     """
-    tasks = get_task_history(
+    tasks = task_service.get_task_history(
         db=db,
         user_id=current_user.id,
         skip=skip,
@@ -157,99 +223,3 @@ def read_task_history(
         end_date=end_date,
     )
     return tasks
-
-
-@router.get("/{task_id}", response_model=TaskWithSubtasks)
-def read_task(
-    *,
-    db: Session = Depends(get_db),
-    task_id: int,
-    current_user: User = Depends(get_current_active_user),
-) -> Any:
-    """
-    Get task by ID.
-    
-    - **task_id**: Task ID
-    """
-    task = get_task(db=db, task_id=task_id, user_id=current_user.id)
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-    return task
-
-
-@router.put("/{task_id}", response_model=Task)
-def update_task_endpoint(
-    *,
-    db: Session = Depends(get_db),
-    task_id: int,
-    task_in: TaskUpdate,
-    current_user: User = Depends(get_current_active_user),
-) -> Any:
-    """
-    Update a task.
-    
-    - **task_id**: Task ID
-    - **title**: Task title
-    - **description**: Detailed description
-    - **due_date**: Due date (ISO format)
-    - **priority**: Priority level (low, medium, high, urgent)
-    - **status**: Task status (todo, in_progress, done)
-    - **tags**: List of tags
-    """
-    task = get_task(db=db, task_id=task_id, user_id=current_user.id)
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-    
-    updated_task = update_task(db=db, task=task, task_in=task_in)
-    return updated_task
-
-
-@router.patch("/{task_id}/complete", response_model=Task)
-def mark_task_as_completed(
-    *,
-    db: Session = Depends(get_db),
-    task_id: int,
-    current_user: User = Depends(get_current_active_user),
-) -> Any:
-    """
-    Mark a task as completed.
-    
-    - **task_id**: Task ID
-    """
-    task = get_task(db=db, task_id=task_id, user_id=current_user.id)
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-    
-    completed_task = mark_task_completed(db=db, task=task)
-    return completed_task
-
-
-@router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
-def delete_task_endpoint(
-    *,
-    db: Session = Depends(get_db),
-    task_id: int,
-    current_user: User = Depends(get_current_active_user),
-) -> None:
-    """
-    Delete a task.
-    
-    - **task_id**: Task ID
-    """
-    task = get_task(db=db, task_id=task_id, user_id=current_user.id)
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-    
-    delete_task(db=db, task_id=task_id)

@@ -68,5 +68,5 @@ class Subscription(Base):
     next_billing_date = Column(DateTime(timezone=True), nullable=True)
     billing_details = Column(JSONB, nullable=True)
     
-    # Metadata
-    metadata = Column(JSONB, nullable=True)
+    # Additional data
+    additional_data = Column(JSONB, nullable=True)

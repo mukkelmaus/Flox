@@ -1,208 +1,163 @@
-from typing import Any, List, Optional
+"""
+AI-powered endpoints for the OneTask API.
 
-from fastapi import APIRouter, Depends, HTTPException, Body, status
+These endpoints provide AI-enhanced features like:
+- Task breakdown
+- Task analysis
+- Productivity insights
+- Planning suggestions
+"""
+
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app import models, schemas
 from app.core.security import get_current_active_user
 from app.db.session import get_db
-from app.models.user import User
-from app.schemas.task import TaskCreate, Task, TaskBreakdown
-from app.services.ai_service import (
-    break_down_task,
-    generate_task_analysis,
-    generate_productivity_insights,
-    suggest_next_steps,
-)
+from app.services import ai_service, task_service
+from app.utils.dependencies import verify_premium_access
 
 router = APIRouter()
 
 
-@router.post("/break-down-task", response_model=TaskBreakdown)
+@router.post("/break-down-task", response_model=schemas.TaskBreakdown)
 async def ai_break_down_task(
     *,
     db: Session = Depends(get_db),
     task_id: int = Body(...),
-    current_user: User = Depends(get_current_active_user),
+    current_user: models.User = Depends(get_current_active_user),
+    _: None = Depends(verify_premium_access),
 ) -> Any:
     """
     AI-powered task breakdown into smaller subtasks.
     
-    - **task_id**: ID of the task to break down
+    - Uses AI to break down a complex task into manageable subtasks
+    - Provides suggestions for tackling the task more effectively
+    - Requires premium access
     """
-    if not settings.ENABLE_AI_FEATURES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="AI features are disabled",
-        )
-    
-    # Get task from database
-    from app.models.task import Task as TaskModel
-    
-    task = db.query(TaskModel).filter(
-        TaskModel.id == task_id, TaskModel.user_id == current_user.id
-    ).first()
-    
+    task = task_service.get_task(db=db, task_id=task_id, user_id=current_user.id)
     if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+        raise HTTPException(status_code=404, detail="Task not found")
     
-    # Use AI service to break down the task
-    breakdown = await break_down_task(task)
-    return breakdown
+    try:
+        breakdown = await ai_service.break_down_task(task)
+        return breakdown
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"AI service error: {str(e)}",
+        )
 
 
-@router.post("/analyze-tasks", response_model=dict)
+@router.post("/analyze-tasks", response_model=Dict[str, Any])
 async def ai_analyze_tasks(
     *,
     db: Session = Depends(get_db),
     start_date: Optional[str] = Body(None),
     end_date: Optional[str] = Body(None),
     workspace_id: Optional[int] = Body(None),
-    current_user: User = Depends(get_current_active_user),
+    current_user: models.User = Depends(get_current_active_user),
+    _: None = Depends(verify_premium_access),
 ) -> Any:
     """
     AI-powered task analysis for productivity insights.
     
-    - **start_date**: Start date for analysis (ISO format)
-    - **end_date**: End date for analysis (ISO format)
-    - **workspace_id**: Limit analysis to a specific workspace
+    - Analyzes task completion patterns, timing, and efficiency
+    - Provides recommendations for improving productivity
+    - Identifies potential bottlenecks and time sinks
+    - Requires premium access
     """
-    if not settings.ENABLE_AI_FEATURES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="AI features are disabled",
-        )
-    
-    # Get user's tasks for the specified time period
-    from app.models.task import Task as TaskModel
-    import datetime
-    
-    query = db.query(TaskModel).filter(TaskModel.user_id == current_user.id)
-    
+    # Get tasks for the specified date range and workspace
+    filters = {}
     if start_date:
-        try:
-            start_datetime = datetime.datetime.fromisoformat(start_date)
-            query = query.filter(TaskModel.created_at >= start_datetime)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid start_date format. Use ISO format (YYYY-MM-DD)",
-            )
-    
+        filters["start_date"] = start_date
     if end_date:
-        try:
-            end_datetime = datetime.datetime.fromisoformat(end_date)
-            query = query.filter(TaskModel.created_at <= end_datetime)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid end_date format. Use ISO format (YYYY-MM-DD)",
-            )
+        filters["end_date"] = end_date
     
-    if workspace_id:
-        query = query.filter(TaskModel.workspace_id == workspace_id)
+    tasks = task_service.get_task_history(
+        db=db,
+        user_id=current_user.id,
+        workspace_id=workspace_id,
+        **filters,
+    )
     
-    tasks = query.all()
-    
-    if not tasks:
+    try:
+        analysis = await ai_service.generate_task_analysis(tasks)
+        return analysis
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No tasks found for the specified criteria",
+            status_code=500,
+            detail=f"AI service error: {str(e)}",
         )
-    
-    # Generate insights using AI
-    analysis = await generate_task_analysis(tasks)
-    return analysis
 
 
-@router.post("/productivity-insights", response_model=dict)
+@router.post("/productivity-insights", response_model=Dict[str, Any])
 async def ai_productivity_insights(
     *,
     db: Session = Depends(get_db),
-    days: Optional[int] = Body(30),
-    current_user: User = Depends(get_current_active_user),
+    current_user: models.User = Depends(get_current_active_user),
+    _: None = Depends(verify_premium_access),
 ) -> Any:
     """
-    AI-powered productivity insights and suggestions based on task history.
+    AI-powered productivity insights based on task history and patterns.
     
-    - **days**: Number of days to include in the analysis (default: 30)
+    - Provides personalized productivity patterns and insights
+    - Suggests optimal working hours based on completion history
+    - Recommends techniques for improving focus and productivity
+    - Requires premium access
     """
-    if not settings.ENABLE_AI_FEATURES:
+    # Get all user's completed tasks for analysis
+    tasks = task_service.get_task_history(
+        db=db,
+        user_id=current_user.id,
+        limit=100,  # Analyze last 100 completed tasks
+    )
+    
+    try:
+        insights = await ai_service.generate_productivity_insights(tasks, current_user)
+        return insights
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="AI features are disabled",
+            status_code=500,
+            detail=f"AI service error: {str(e)}",
         )
-    
-    # Get user's tasks for the specified time period
-    from app.models.task import Task as TaskModel
-    import datetime
-    
-    start_date = datetime.datetime.now() - datetime.timedelta(days=days)
-    
-    tasks = db.query(TaskModel).filter(
-        TaskModel.user_id == current_user.id,
-        TaskModel.created_at >= start_date,
-    ).all()
-    
-    if not tasks:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No tasks found for the specified time period",
-        )
-    
-    # Generate productivity insights
-    insights = await generate_productivity_insights(tasks, current_user)
-    return insights
 
 
-@router.post("/next-steps", response_model=List[TaskCreate])
+@router.post("/{task_id}/suggest-next-steps", response_model=List[schemas.TaskCreate])
 async def ai_suggest_next_steps(
     *,
     db: Session = Depends(get_db),
-    task_id: int = Body(...),
-    current_user: User = Depends(get_current_active_user),
+    task_id: int,
+    current_user: models.User = Depends(get_current_active_user),
+    _: None = Depends(verify_premium_access),
 ) -> Any:
     """
-    Get AI suggestions for next steps after completing a task.
+    AI suggestions for next steps after completing a task.
     
-    - **task_id**: ID of the completed task
+    - Generates suggested follow-up tasks based on task completion
+    - Provides context-aware recommendations
+    - Can be directly used to create new tasks
+    - Requires premium access
     """
-    if not settings.ENABLE_AI_FEATURES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="AI features are disabled",
-        )
-    
-    # Get task from database
-    from app.models.task import Task as TaskModel
-    
-    task = db.query(TaskModel).filter(
-        TaskModel.id == task_id, TaskModel.user_id == current_user.id
-    ).first()
-    
+    task = task_service.get_task(db=db, task_id=task_id, user_id=current_user.id)
     if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-    
-    # Ensure task is completed
-    if task.status != "done":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Task must be completed to get next step suggestions",
-        )
+        raise HTTPException(status_code=404, detail="Task not found")
     
     # Get related tasks for context
-    related_tasks = db.query(TaskModel).filter(
-        TaskModel.user_id == current_user.id,
-        TaskModel.id != task_id,
-        TaskModel.workspace_id == task.workspace_id,
-    ).limit(10).all()
+    related_tasks = task_service.get_tasks(
+        db=db,
+        user_id=current_user.id,
+        workspace_id=task.workspace_id,
+        limit=10,
+    )
     
-    # Generate next step suggestions
-    next_steps = await suggest_next_steps(task, related_tasks)
-    return next_steps
+    try:
+        suggestions = await ai_service.suggest_next_steps(task, related_tasks)
+        return suggestions
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"AI service error: {str(e)}",
+        )

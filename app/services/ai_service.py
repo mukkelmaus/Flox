@@ -1,28 +1,31 @@
+"""
+AI service for the OneTask API.
+
+This module handles interactions with AI services like OpenAI for features such as:
+- Task breakdown
+- Task analysis
+- Productivity insights
+- Smart task suggestions
+"""
+
 import json
-import os
 import logging
-from typing import List, Dict, Any, Optional
-from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
-
+from app import models, schemas
 from app.core.config import settings
-from app.models.task import Task, SubTask
-from app.models.user import User
-from app.schemas.task import TaskBreakdown, TaskCreate
 
-# Configure logging
-logger = logging.getLogger(__name__)
-
-# Import OpenAI
+# Import OpenAI client
 from openai import OpenAI
 
 # Initialize OpenAI client
 openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
+# Logger
+logger = logging.getLogger(__name__)
 
-async def break_down_task(task: Task) -> TaskBreakdown:
+
+async def break_down_task(task: models.Task) -> schemas.TaskBreakdown:
     """
     Use AI to break down a complex task into smaller subtasks.
     
@@ -32,94 +35,85 @@ async def break_down_task(task: Task) -> TaskBreakdown:
     Returns:
         Task breakdown with subtasks and suggestions
     """
-    if not settings.OPENAI_API_KEY:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI services are not configured",
+    if not settings.ENABLE_AI_FEATURES:
+        logger.warning("AI features are disabled, returning empty breakdown")
+        return schemas.TaskBreakdown(
+            original_task=task,
+            subtasks=[],
+            suggestions="AI features are currently disabled."
         )
     
     try:
-        # Prepare task data for the prompt
-        task_data = {
-            "title": task.title,
-            "description": task.description,
-            "priority": task.priority,
-            "due_date": task.due_date.isoformat() if task.due_date else None,
-            "tags": [tag.name for tag in task.tags] if task.tags else [],
-        }
-        
-        # Create prompt
+        # Prepare prompt for the AI
         prompt = f"""
-        I'd like you to break down the following task into smaller, more manageable subtasks. 
-        This is for a neurodivergent user who may benefit from clearer, more actionable steps.
+        Please break down the following task into smaller, more manageable subtasks:
         
-        Task: {json.dumps(task_data, indent=2)}
+        Task Title: {task.title}
+        Description: {task.description or 'No description provided'}
+        Priority: {task.priority}
+        Due Date: {task.due_date.isoformat() if task.due_date else 'No due date'}
         
-        Please break this down into 3-7 smaller subtasks, each with:
-        1. A clear, specific title
-        2. Appropriate priority level (low, medium, high, urgent)
-        3. Estimated time to complete (in minutes)
+        Guidelines:
+        - Create 3-7 subtasks that would help complete this task
+        - Each subtask should be clear and actionable
+        - Subtasks should be in a logical sequence
+        - Consider the task priority and due date when breaking it down
+        - Provide a brief suggestion on how to approach this task effectively
         
-        Also provide brief suggestions on how to approach this task effectively, especially for someone with ADHD or other neurodivergent traits.
-        
-        Format your response as JSON with the following structure:
+        Return your response as a JSON object with the following structure:
         {{
             "subtasks": [
-                {{
-                    "title": "Subtask title",
-                    "priority": "medium",
-                    "estimated_minutes": 30
-                }}
+                {{"title": "Subtask 1", "description": "Details about subtask 1"}},
+                {{"title": "Subtask 2", "description": "Details about subtask 2"}},
+                ...
             ],
-            "suggestions": "Brief helpful suggestions for approaching this task"
+            "suggestions": "Your suggestions on how to approach the task effectively"
         }}
         """
         
         # Call OpenAI API
         response = openai_client.chat.completions.create(
-            # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-            # do not change this unless explicitly requested by the user
-            model="gpt-4o",
+            model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
             messages=[
-                {"role": "system", "content": "You are an AI assistant specialized in task management and productivity for neurodivergent individuals."},
+                {"role": "system", "content": "You are an AI assistant specializing in task management and productivity."},
                 {"role": "user", "content": prompt}
             ],
-            response_format={"type": "json_object"},
-            temperature=0.7,
+            response_format={"type": "json_object"}
         )
         
-        result = json.loads(response.choices[0].message.content)
+        # Parse response
+        content = response.choices[0].message.content
+        result = json.loads(content)
         
         # Create subtasks from the AI response
         subtasks = []
-        for subtask_data in result["subtasks"]:
-            # Create a new Task object (which will be a subtask)
-            subtask = Task(
+        for i, subtask_data in enumerate(result["subtasks"]):
+            subtask = models.Task(
                 title=subtask_data["title"],
-                priority=subtask_data["priority"],
-                estimated_minutes=subtask_data.get("estimated_minutes", None),
+                description=subtask_data.get("description", ""),
+                status="todo",
+                priority=task.priority,
+                due_date=task.due_date,
                 user_id=task.user_id,
                 workspace_id=task.workspace_id,
                 parent_id=task.id,
-                status="todo",
+                order=i
             )
             subtasks.append(subtask)
         
-        return TaskBreakdown(
+        # Return task breakdown
+        return schemas.TaskBreakdown(
             original_task=task,
             subtasks=subtasks,
             suggestions=result["suggestions"]
         )
-        
+    
     except Exception as e:
-        logger.error(f"Error in AI task breakdown: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to process AI task breakdown: {str(e)}",
-        )
+        logger.error(f"Error in break_down_task: {str(e)}")
+        raise
 
 
-async def generate_task_analysis(tasks: List[Task]) -> Dict[str, Any]:
+async def generate_task_analysis(tasks: List[models.Task]) -> Dict[str, Any]:
     """
     Generate AI-powered analysis of user's tasks.
     
@@ -129,69 +123,80 @@ async def generate_task_analysis(tasks: List[Task]) -> Dict[str, Any]:
     Returns:
         Analysis results
     """
-    if not settings.OPENAI_API_KEY:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI services are not configured",
-        )
+    if not settings.ENABLE_AI_FEATURES:
+        logger.warning("AI features are disabled, returning empty analysis")
+        return {
+            "summary": "AI features are currently disabled.",
+            "patterns": [],
+            "recommendations": []
+        }
     
     try:
-        # Prepare task data for the prompt
-        task_data = []
+        # Prepare tasks data for AI
+        tasks_data = []
         for task in tasks:
-            task_data.append({
+            task_data = {
                 "title": task.title,
                 "description": task.description,
                 "status": task.status,
                 "priority": task.priority,
-                "due_date": task.due_date.isoformat() if task.due_date else None,
+                "created_at": task.created_at.isoformat() if task.created_at else None,
                 "completed_at": task.completed_at.isoformat() if task.completed_at else None,
                 "estimated_minutes": task.estimated_minutes,
                 "actual_minutes": task.actual_minutes,
-                "tags": [tag.name for tag in task.tags] if task.tags else [],
-            })
+                "context_tags": task.context_tags,
+            }
+            tasks_data.append(task_data)
         
-        # Create prompt
+        # Prepare prompt for the AI
         prompt = f"""
-        Please analyze the following task data for a user and provide insights:
+        Please analyze the following tasks and provide productivity insights:
         
-        Task Data: {json.dumps(task_data, indent=2)}
+        Tasks: {json.dumps(tasks_data)}
         
-        Please provide the following analysis:
-        1. Productivity patterns (when tasks are completed, efficiency, etc.)
-        2. Task completion rate and time management
-        3. Priority management (how well they handle high vs. low priority tasks)
-        4. Key challenges identified from the task data
-        5. Recommendations for improvement
+        I need:
+        1. A summary of task completion patterns
+        2. Any noticeable patterns in productivity or task handling
+        3. Recommendations for improving productivity
         
-        Format your response as a JSON object with these sections.
+        Return your response as a JSON object with the following structure:
+        {{
+            "summary": "Overall summary of task patterns and productivity",
+            "patterns": [
+                "Pattern 1 description",
+                "Pattern 2 description",
+                ...
+            ],
+            "recommendations": [
+                "Recommendation 1",
+                "Recommendation 2",
+                ...
+            ]
+        }}
         """
         
         # Call OpenAI API
         response = openai_client.chat.completions.create(
-            # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-            # do not change this unless explicitly requested by the user
-            model="gpt-4o",
+            model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
             messages=[
-                {"role": "system", "content": "You are an AI productivity analyst specialized in helping neurodivergent individuals optimize their task management."},
+                {"role": "system", "content": "You are an AI assistant specializing in productivity analysis and task management."},
                 {"role": "user", "content": prompt}
             ],
-            response_format={"type": "json_object"},
-            temperature=0.7,
+            response_format={"type": "json_object"}
         )
         
-        result = json.loads(response.choices[0].message.content)
+        # Parse response
+        content = response.choices[0].message.content
+        result = json.loads(content)
+        
         return result
-        
+    
     except Exception as e:
-        logger.error(f"Error in AI task analysis: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to process AI task analysis: {str(e)}",
-        )
+        logger.error(f"Error in generate_task_analysis: {str(e)}")
+        raise
 
 
-async def generate_productivity_insights(tasks: List[Task], user: User) -> Dict[str, Any]:
+async def generate_productivity_insights(tasks: List[models.Task], user: models.User) -> Dict[str, Any]:
     """
     Generate AI-powered productivity insights for the user.
     
@@ -202,87 +207,86 @@ async def generate_productivity_insights(tasks: List[Task], user: User) -> Dict[
     Returns:
         Productivity insights
     """
-    if not settings.OPENAI_API_KEY:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI services are not configured",
-        )
+    if not settings.ENABLE_AI_FEATURES:
+        logger.warning("AI features are disabled, returning empty insights")
+        return {
+            "optimal_hours": [],
+            "focus_tips": [],
+            "productivity_pattern": "AI features are currently disabled."
+        }
     
     try:
-        # Prepare task data for the prompt
-        completed_tasks = [t for t in tasks if t.status == "done"]
-        ongoing_tasks = [t for t in tasks if t.status != "done"]
+        # Prepare tasks data for AI
+        tasks_data = []
+        for task in tasks:
+            task_data = {
+                "title": task.title,
+                "status": task.status,
+                "priority": task.priority,
+                "created_at": task.created_at.isoformat() if task.created_at else None,
+                "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+                "estimated_minutes": task.estimated_minutes,
+                "actual_minutes": task.actual_minutes,
+                "ai_energy_level": task.ai_energy_level,
+                "context_tags": task.context_tags,
+            }
+            tasks_data.append(task_data)
         
-        completed_on_time = sum(1 for t in completed_tasks if t.due_date and t.completed_at <= t.due_date)
-        completed_late = sum(1 for t in completed_tasks if t.due_date and t.completed_at > t.due_date)
-        
-        # Calculate efficiency metrics
-        estimation_accuracy = []
-        for task in completed_tasks:
-            if task.estimated_minutes and task.actual_minutes:
-                accuracy = task.actual_minutes / task.estimated_minutes
-                estimation_accuracy.append(accuracy)
-        
-        avg_accuracy = sum(estimation_accuracy) / len(estimation_accuracy) if estimation_accuracy else None
-        
-        # Prepare metrics
-        metrics = {
-            "total_tasks": len(tasks),
-            "completed_tasks": len(completed_tasks),
-            "completion_rate": len(completed_tasks) / len(tasks) if tasks else 0,
-            "completed_on_time": completed_on_time,
-            "completed_late": completed_late,
-            "on_time_rate": completed_on_time / len(completed_tasks) if completed_tasks else 0,
-            "estimation_accuracy": avg_accuracy,
+        # Prepare user data
+        user_data = {
+            "time_zone": user.time_zone,
+            "language": user.language
         }
         
-        # Create prompt
+        # Prepare prompt for the AI
         prompt = f"""
-        Please analyze the following productivity data for a user and provide personalized insights:
+        Please analyze the following user's tasks and provide productivity insights:
         
-        Productivity Metrics: {json.dumps(metrics, indent=2)}
+        User: {json.dumps(user_data)}
+        Tasks: {json.dumps(tasks_data)}
         
-        The user has {len(ongoing_tasks)} ongoing tasks and {len(completed_tasks)} completed tasks.
+        I need:
+        1. The user's optimal productive hours based on task completion times
+        2. Focus tips tailored to the user's task patterns
+        3. A description of the user's productivity pattern
         
-        Please provide the following insights for a user who may have ADHD or be neurodivergent:
-        1. Strengths in their current productivity
-        2. Areas for improvement
-        3. Personalized suggestions for better task management
-        4. Specific techniques that might help with focus and completion
-        5. A motivational message
-        
-        Format your response as a JSON object with these sections.
+        Return your response as a JSON object with the following structure:
+        {{
+            "optimal_hours": [
+                {{"start_hour": 9, "end_hour": 11, "productivity_level": "high", "task_types": ["creative", "analytical"]}},
+                {{"start_hour": 15, "end_hour": 17, "productivity_level": "medium", "task_types": ["administrative", "communication"]}}
+            ],
+            "focus_tips": [
+                "Tip 1",
+                "Tip 2",
+                ...
+            ],
+            "productivity_pattern": "Description of the user's productivity pattern"
+        }}
         """
         
         # Call OpenAI API
         response = openai_client.chat.completions.create(
-            # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-            # do not change this unless explicitly requested by the user
-            model="gpt-4o",
+            model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
             messages=[
-                {"role": "system", "content": "You are an AI productivity coach specialized in supporting neurodivergent individuals."},
+                {"role": "system", "content": "You are an AI assistant specializing in productivity analysis with expertise in helping neurodivergent individuals."},
                 {"role": "user", "content": prompt}
             ],
-            response_format={"type": "json_object"},
-            temperature=0.7,
+            response_format={"type": "json_object"}
         )
         
-        result = json.loads(response.choices[0].message.content)
-        
-        # Add metrics to the result
-        result["metrics"] = metrics
+        # Parse response
+        content = response.choices[0].message.content
+        result = json.loads(content)
         
         return result
-        
+    
     except Exception as e:
-        logger.error(f"Error in AI productivity insights: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate productivity insights: {str(e)}",
-        )
+        logger.error(f"Error in generate_productivity_insights: {str(e)}")
+        raise
 
 
-async def suggest_next_steps(task: Task, related_tasks: List[Task]) -> List[TaskCreate]:
+async def suggest_next_steps(task: models.Task, related_tasks: List[models.Task]) -> List[schemas.TaskCreate]:
     """
     Generate AI suggestions for next steps after completing a task.
     
@@ -293,83 +297,86 @@ async def suggest_next_steps(task: Task, related_tasks: List[Task]) -> List[Task
     Returns:
         List of suggested next tasks
     """
-    if not settings.OPENAI_API_KEY:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI services are not configured",
-        )
+    if not settings.ENABLE_AI_FEATURES:
+        logger.warning("AI features are disabled, returning empty next steps")
+        return []
     
     try:
-        # Prepare task data for the prompt
+        # Prepare task data for AI
         task_data = {
             "title": task.title,
             "description": task.description,
-            "tags": [tag.name for tag in task.tags] if task.tags else [],
+            "status": task.status,
+            "priority": task.priority,
+            "context_tags": task.context_tags,
             "workspace_id": task.workspace_id,
         }
         
-        related_data = []
+        # Prepare related tasks data
+        related_tasks_data = []
         for related_task in related_tasks:
-            related_data.append({
+            related_task_data = {
                 "title": related_task.title,
                 "status": related_task.status,
                 "priority": related_task.priority,
-            })
+                "context_tags": related_task.context_tags,
+            }
+            related_tasks_data.append(related_task_data)
         
-        # Create prompt
+        # Prepare prompt for the AI
         prompt = f"""
-        The user has completed the following task:
+        Please suggest next steps after completing the following task:
         
-        Task: {json.dumps(task_data, indent=2)}
+        Completed Task: {json.dumps(task_data)}
+        Related Tasks (for context): {json.dumps(related_tasks_data)}
         
-        Here are some related tasks for context:
-        {json.dumps(related_data, indent=2)}
+        I need:
+        1. 3-5 potential follow-up tasks that would make sense to do next
+        2. Each task should include a title, description, priority, and status
+        3. The tasks should be logical next steps considering the completed task and related tasks
         
-        Based on the completed task and context, suggest 2-3 potential next tasks that would be logical follow-ups.
-        
-        For each suggested task, provide:
-        1. Title
-        2. Brief description
-        3. Suggested priority (low, medium, high)
-        4. Estimated time to complete (in minutes)
-        5. Any relevant tags
-        
-        Format your response as a JSON array of task objects.
+        Return your response as a JSON array with the following structure:
+        [
+            {{
+                "title": "Next Task 1",
+                "description": "Description of next task 1",
+                "priority": "medium",
+                "status": "todo",
+                "context_tags": ["tag1", "tag2"]
+            }},
+            ...
+        ]
         """
         
         # Call OpenAI API
         response = openai_client.chat.completions.create(
-            # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-            # do not change this unless explicitly requested by the user
-            model="gpt-4o",
+            model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
             messages=[
-                {"role": "system", "content": "You are an AI productivity assistant that helps users maintain momentum by suggesting logical next steps."},
+                {"role": "system", "content": "You are an AI assistant specializing in task management and workflow optimization."},
                 {"role": "user", "content": prompt}
             ],
-            response_format={"type": "json_object"},
-            temperature=0.8,
+            response_format={"type": "json_object"}
         )
         
-        result = json.loads(response.choices[0].message.content)
+        # Parse response
+        content = response.choices[0].message.content
+        result = json.loads(content)
         
-        # Convert the result to TaskCreate objects
+        # Convert to TaskCreate objects
         suggested_tasks = []
-        for suggestion in result:
-            task_create = TaskCreate(
-                title=suggestion["title"],
-                description=suggestion.get("description", ""),
-                priority=suggestion.get("priority", "medium"),
-                estimated_minutes=suggestion.get("estimated_minutes", None),
-                context_tags=suggestion.get("tags", []),
+        for task_data in result:
+            suggested_task = schemas.TaskCreate(
+                title=task_data["title"],
+                description=task_data.get("description", ""),
+                priority=task_data.get("priority", "medium"),
+                status=task_data.get("status", "todo"),
+                context_tags=task_data.get("context_tags", []),
                 workspace_id=task.workspace_id,
             )
-            suggested_tasks.append(task_create)
+            suggested_tasks.append(suggested_task)
         
         return suggested_tasks
-        
+    
     except Exception as e:
-        logger.error(f"Error in AI next steps suggestion: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to suggest next steps: {str(e)}",
-        )
+        logger.error(f"Error in suggest_next_steps: {str(e)}")
+        raise

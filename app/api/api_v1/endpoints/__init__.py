@@ -1,1 +1,3 @@
-# API endpoints package
+"""
+API endpoints for the OneTask API.
+"""
