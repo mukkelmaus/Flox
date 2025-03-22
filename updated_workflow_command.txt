@@ -1,1 +1,1 @@
-python main_uvicorn.py
+./run_uvicorn_server.sh
