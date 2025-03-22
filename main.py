@@ -75,39 +75,76 @@ def simple_app(environ, start_response):
     ])
     return [response_body]
 
-# Create a WSGI-to-ASGI adapter for FastAPI
-class WSGItoASGIAdapter:
-    def __init__(self, asgi_app):
-        self.asgi_app = asgi_app
-        self.asgi_is_loaded = False
-        
-    def __call__(self, environ, start_response):
-        # Simple routes are handled directly
-        path = environ.get('PATH_INFO', '')
-        
-        if path == '/health' or path == '/':
-            return simple_app(environ, start_response)
-        
-        # For all other routes, we need ASGI
-        if not FASTAPI_AVAILABLE:
-            return simple_app(environ, start_response)
-        
-        # Try to use the ASGI app through a bridging layer
-        try:
-            from uvicorn.middleware.wsgi import WSGIMiddleware
-            wsgi_app = WSGIMiddleware(self.asgi_app)
-            return wsgi_app(environ, start_response)
-        except ImportError:
-            logger.error("Failed to import WSGIMiddleware")
-            return simple_app(environ, start_response)
+# Create a modified simple app that provides helpful info for API endpoints
+def advanced_simple_app(environ, start_response):
+    """Enhanced WSGI application that provides more helpful responses"""
+    path = environ.get('PATH_INFO', '')
+    
+    # Handle health check
+    if path == '/health':
+        start_response('200 OK', [('Content-Type', 'text/plain')])
+        return [b'OK']
+    
+    # Handle root path
+    if path == '/':
+        response_body = json.dumps({
+            "status": "ok", 
+            "message": "OneTask API is running. FastAPI mode: " + 
+                      ("ENABLED" if FASTAPI_AVAILABLE else "DISABLED") +
+                      ". Running under Gunicorn: " + 
+                      ("YES" if is_running_under_gunicorn() else "NO")
+        }).encode('utf-8')
+        start_response('200 OK', [
+            ('Content-Type', 'application/json'),
+            ('Content-Length', str(len(response_body)))
+        ])
+        return [response_body]
+    
+    # Special helpful message for the docs endpoint
+    if path == '/docs':
+        response_body = json.dumps({
+            "status": "info", 
+            "message": "Swagger UI is only available when running with Uvicorn directly.",
+            "instructions": "To access the full API documentation and functionality, run the application with: python -m uvicorn app.main:app --host 0.0.0.0 --port 5000"
+        }).encode('utf-8')
+        start_response('200 OK', [
+            ('Content-Type', 'application/json'),
+            ('Content-Length', str(len(response_body)))
+        ])
+        return [response_body]
+    
+    # For all API endpoints
+    if path.startswith('/api/'):
+        response_body = json.dumps({
+            "status": "info", 
+            "message": "API endpoints are only available when running with Uvicorn directly.",
+            "instructions": "To access the full API functionality, run the application with: python -m uvicorn app.main:app --host 0.0.0.0 --port 5000"
+        }).encode('utf-8')
+        start_response('200 OK', [
+            ('Content-Type', 'application/json'),
+            ('Content-Length', str(len(response_body)))
+        ])
+        return [response_body]
+    
+    # For all other paths, return a notice
+    response_body = json.dumps({
+        "status": "error", 
+        "message": "Direct API access not available in this mode.",
+        "instructions": "To access the full API functionality, run the application with: python -m uvicorn app.main:app --host 0.0.0.0 --port 5000"
+    }).encode('utf-8')
+    start_response('404 Not Found', [
+        ('Content-Type', 'application/json'),
+        ('Content-Length', str(len(response_body)))
+    ])
+    return [response_body]
 
 # Determine which app to expose
 if FASTAPI_AVAILABLE:
     try:
-        logger.info("Using FastAPI application with adapter")
-        app = WSGItoASGIAdapter(fastapi_app)
+        logger.info("Using enhanced simple app with FastAPI notices")
+        app = advanced_simple_app
     except Exception as e:
-        logger.error(f"Failed to initialize adapter: {e}")
+        logger.error(f"Failed to initialize advanced app: {e}")
         app = simple_app
 else:
     logger.info("Using simple WSGI application")
