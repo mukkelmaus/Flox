@@ -1,0 +1,50 @@
+Develop the backend for a self-hosted SaaS version of OneTask, an AI-powered to-do application designed to help users — especially creatives, individuals with ADHD, and neurodivergent people — effectively organize, prioritize, and manage their tasks.
+
+The backend must be implemented in Python using FastAPI and follow a modular, scalable architecture. It must include comprehensive documentation that clearly explains how to integrate the backend with a separate frontend (e.g., built in TypeScript/React), covering authentication, data flows, endpoint usage, and example requests.
+
+Backend Responsibilities – Core Features:
+
+1. Automatic Task Prioritization: Logic and endpoints to prioritize tasks based on user-defined or AI-enhanced criteria.
+
+2. Focus Mode Support: Endpoint filters to deliver only currently relevant tasks based on context or time sensitivity.
+
+3. AI-Assisted Planning: Integrate AI to break down complex tasks into smaller subtasks and provide planning suggestions.
+
+4. Support for Multiple View Modes: Backend structure should support list, card, calendar, and Kanban representations (frontend-agnostic).
+
+5. Task History Tracking: Persistent storage and retrieval of completed task history.
+
+6. Third-Party Integration Layer: Secure API endpoints and sync logic for services like Google Calendar and Todoist.
+
+7. User Theme Settings Endpoint: Deliver theme configuration data for the frontend to apply user-specific themes.
+
+8. AI Analytics & Workflow Assistant: AI-driven endpoints for task analysis and productivity guidance.
+
+9. Workspace & Team Management: Multi-user workspaces with role-based access control.
+
+10. API-First Design for Cross-Platform Support: All features must be accessible through clean, well-documented RESTful APIs.
+
+11. Customer Support Interface: Endpoints to manage and log support queries.
+
+12. Subscription Management: Backend logic to handle freemium/pro/org-tier features, payment hooks, and access restrictions.
+
+Additional Backend Features (Based on User Needs & Cognitive Research):
+
+13. Smart Notifications & Reminders: Customizable reminder schedules with user preference storage.
+
+14. Gamification Tracking: Track engagement, streaks, and reward progress server-side.
+
+15. Accessibility Settings: API-level support for frontend rendering preferences (e.g., font size, color contrast settings).
+
+Documentation Requirements:
+
+- Use FastAPI’s built-in OpenAPI support to document all endpoints.
+- Provide data schemas (via Pydantic models) with field-level descriptions.
+- Include example calls (cURL, Postman collections, etc.).
+- Add a dedicated section describing how to integrate this backend with a modern frontend (React/TypeScript), covering:
+  - Authentication/authorization flow
+  - State management hints
+  - Endpoint usage patterns
+  - Real-time features (if applicable)
+
+The backend should be developed with extensibility in mind, ready for seamless integration into a standalone frontend developed separately.

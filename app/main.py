@@ -6,6 +6,7 @@ from fastapi.openapi.utils import get_openapi
 from starlette.responses import JSONResponse
 
 from app.api.api_v1.api import api_router
+from app.websockets.endpoints import router as websocket_router
 from app.core.config import settings
 
 # Configure logging

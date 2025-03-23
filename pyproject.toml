@@ -26,4 +26,6 @@ dependencies = [
     "flask-login>=0.6.3",
     "flask-wtf>=1.2.2",
     "requests>=2.32.3",
+    "jose>=1.0.0",
+    "bcrypt>=4.3.0",
 ]
