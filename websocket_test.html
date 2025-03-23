@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OneTask WebSocket Test</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <style>
+        #notifications {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--bs-gray-700);
+            padding: 10px;
+            margin-bottom: 20px;
+            background-color: var(--bs-gray-900);
+        }
+        
+        .notification {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .notification-task {
+            background-color: var(--bs-primary-bg-subtle);
+            border-left: 4px solid var(--bs-primary);
+        }
+        
+        .notification-workspace {
+            background-color: var(--bs-info-bg-subtle);
+            border-left: 4px solid var(--bs-info);
+        }
+        
+        .notification-system {
+            background-color: var(--bs-warning-bg-subtle);
+            border-left: 4px solid var(--bs-warning);
+        }
+        
+        .notification-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .notification-time {
+            font-size: 0.8em;
+            color: var(--bs-gray-600);
+        }
+        
+        .connection-status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        
+        .connected {
+            background-color: var(--bs-success-bg-subtle);
+            color: var(--bs-success);
+        }
+        
+        .disconnected {
+            background-color: var(--bs-danger-bg-subtle);
+            color: var(--bs-danger);
+        }
+    </style>
+</head>
+<body class="bg-dark text-light">
+    <div class="container mt-4">
+        <h1>OneTask WebSocket Test</h1>
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card bg-dark border-secondary">
+                    <div class="card-header">Connection Settings</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="tokenInput" class="form-label">Access Token</label>
+                            <input type="text" class="form-control" id="tokenInput" placeholder="JWT access token">
+                        </div>
+                        <div class="mb-3">
+                            <label for="workspaceInput" class="form-label">Workspace ID (optional)</label>
+                            <input type="number" class="form-control" id="workspaceInput" placeholder="For workspace notifications">
+                        </div>
+                        <div class="mb-3">
+                            <button id="connectBtn" class="btn btn-primary">Connect</button>
+                            <button id="disconnectBtn" class="btn btn-danger" disabled>Disconnect</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card bg-dark border-secondary">
+                    <div class="card-header">Connection Status</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <span>Notifications: </span>
+                            <span id="notificationStatus" class="connection-status disconnected">Disconnected</span>
+                        </div>
+                        <div class="mb-3">
+                            <span>Workspace: </span>
+                            <span id="workspaceStatus" class="connection-status disconnected">Disconnected</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card bg-dark border-secondary mb-4">
+            <div class="card-header">Real-time Notifications</div>
+            <div class="card-body">
+                <div id="notifications">
+                    <div class="text-center text-muted">
+                        <em>No notifications yet.</em>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card bg-dark border-secondary">
+            <div class="card-header">Send Test Event</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="eventType" class="form-label">Event Type</label>
+                    <select class="form-select" id="eventType">
+                        <option value="task">Task Event</option>
+                        <option value="workspace">Workspace Event</option>
+                        <option value="system">System Event</option>
+                    </select>
+                </div>
+                
+                <div id="taskFields">
+                    <div class="mb-3">
+                        <label for="taskId" class="form-label">Task ID</label>
+                        <input type="number" class="form-control" id="taskId" value="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="taskTitle" class="form-label">Task Title</label>
+                        <input type="text" class="form-control" id="taskTitle" value="Test Task">
+                    </div>
+                    <div class="mb-3">
+                        <label for="taskAction" class="form-label">Action</label>
+                        <select class="form-select" id="taskAction">
+                            <option value="created">Created</option>
+                            <option value="updated">Updated</option>
+                            <option value="completed">Completed</option>
+                            <option value="deleted">Deleted</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="workspaceFields" style="display:none;">
+                    <div class="mb-3">
+                        <label for="workspaceId" class="form-label">Workspace ID</label>
+                        <input type="number" class="form-control" id="workspaceId" value="1">
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="eventTitle" class="form-label">Event Title</label>
+                    <input type="text" class="form-control" id="eventTitle" value="Test Event">
+                </div>
+                <div class="mb-3">
+                    <label for="eventContent" class="form-label">Event Content</label>
+                    <textarea class="form-control" id="eventContent" rows="3">This is a test event notification</textarea>
+                </div>
+                
+                <button id="sendEventBtn" class="btn btn-primary" disabled>Send Event</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // WebSocket connections
+        let notificationSocket = null;
+        let workspaceSocket = null;
+        
+        // DOM elements
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const notificationStatus = document.getElementById('notificationStatus');
+        const workspaceStatus = document.getElementById('workspaceStatus');
+        const notifications = document.getElementById('notifications');
+        const eventType = document.getElementById('eventType');
+        const taskFields = document.getElementById('taskFields');
+        const workspaceFields = document.getElementById('workspaceFields');
+        const sendEventBtn = document.getElementById('sendEventBtn');
+        
+        // Update UI based on event type selection
+        eventType.addEventListener('change', () => {
+            if (eventType.value === 'task') {
+                taskFields.style.display = 'block';
+                workspaceFields.style.display = 'none';
+            } else if (eventType.value === 'workspace') {
+                taskFields.style.display = 'none';
+                workspaceFields.style.display = 'block';
+            } else {
+                taskFields.style.display = 'none';
+                workspaceFields.style.display = 'none';
+            }
+        });
+        
+        // Connect button click handler
+        connectBtn.addEventListener('click', () => {
+            const token = document.getElementById('tokenInput').value;
+            const workspaceId = document.getElementById('workspaceInput').value;
+            
+            if (!token) {
+                alert('Please enter an access token');
+                return;
+            }
+            
+            // Connect to notification websocket
+            connectToNotifications(token);
+            
+            // Connect to workspace websocket if workspace ID is provided
+            if (workspaceId) {
+                connectToWorkspace(token, workspaceId);
+            }
+            
+            // Update UI
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = false;
+            sendEventBtn.disabled = false;
+        });
+        
+        // Disconnect button click handler
+        disconnectBtn.addEventListener('click', () => {
+            disconnectWebSockets();
+            
+            // Update UI
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            sendEventBtn.disabled = true;
+        });
+        
+        // Send event button click handler
+        sendEventBtn.addEventListener('click', async () => {
+            const token = document.getElementById('tokenInput').value;
+            const eventTypeValue = eventType.value;
+            const title = document.getElementById('eventTitle').value;
+            const content = document.getElementById('eventContent').value;
+            
+            let endpoint = '';
+            let data = {
+                title: title,
+                content: content
+            };
+            
+            if (eventTypeValue === 'task') {
+                endpoint = '/api/v1/realtime/events/task';
+                data.task_id = parseInt(document.getElementById('taskId').value);
+                data.title = document.getElementById('taskTitle').value;
+                data.action = document.getElementById('taskAction').value;
+            } else if (eventTypeValue === 'workspace') {
+                endpoint = '/api/v1/realtime/events/workspace';
+                data.workspace_id = parseInt(document.getElementById('workspaceId').value);
+            } else {
+                endpoint = '/api/v1/realtime/events/system';
+            }
+            
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('Event sent:', result);
+            } catch (error) {
+                console.error('Error sending event:', error);
+                alert(`Error sending event: ${error.message}`);
+            }
+        });
+        
+        // Connect to notification websocket
+        function connectToNotifications(token) {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
+            const url = `${protocol}//${host}/ws/notifications?token=${token}`;
+            
+            notificationSocket = new WebSocket(url);
+            
+            notificationSocket.onopen = () => {
+                console.log('Connected to notification websocket');
+                notificationStatus.textContent = 'Connected';
+                notificationStatus.classList.remove('disconnected');
+                notificationStatus.classList.add('connected');
+            };
+            
+            notificationSocket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log('Notification received:', data);
+                addNotification(data);
+            };
+            
+            notificationSocket.onclose = () => {
+                console.log('Disconnected from notification websocket');
+                notificationStatus.textContent = 'Disconnected';
+                notificationStatus.classList.remove('connected');
+                notificationStatus.classList.add('disconnected');
+            };
+            
+            notificationSocket.onerror = (error) => {
+                console.error('Notification websocket error:', error);
+            };
+        }
+        
+        // Connect to workspace websocket
+        function connectToWorkspace(token, workspaceId) {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
+            const url = `${protocol}//${host}/ws/tasks/${workspaceId}?token=${token}`;
+            
+            workspaceSocket = new WebSocket(url);
+            
+            workspaceSocket.onopen = () => {
+                console.log(`Connected to workspace ${workspaceId} websocket`);
+                workspaceStatus.textContent = `Connected to Workspace ${workspaceId}`;
+                workspaceStatus.classList.remove('disconnected');
+                workspaceStatus.classList.add('connected');
+            };
+            
+            workspaceSocket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log('Workspace event received:', data);
+                addNotification(data);
+            };
+            
+            workspaceSocket.onclose = () => {
+                console.log('Disconnected from workspace websocket');
+                workspaceStatus.textContent = 'Disconnected';
+                workspaceStatus.classList.remove('connected');
+                workspaceStatus.classList.add('disconnected');
+            };
+            
+            workspaceSocket.onerror = (error) => {
+                console.error('Workspace websocket error:', error);
+            };
+        }
+        
+        // Disconnect from all websockets
+        function disconnectWebSockets() {
+            if (notificationSocket) {
+                notificationSocket.close();
+                notificationSocket = null;
+            }
+            
+            if (workspaceSocket) {
+                workspaceSocket.close();
+                workspaceSocket = null;
+            }
+        }
+        
+        // Add notification to the UI
+        function addNotification(data) {
+            // Clear "No notifications" message if it exists
+            if (notifications.querySelector('.text-muted')) {
+                notifications.innerHTML = '';
+            }
+            
+            const notificationDiv = document.createElement('div');
+            notificationDiv.className = `notification notification-${data.notification_type || data.type || 'system'}`;
+            
+            const titleDiv = document.createElement('div');
+            titleDiv.className = 'notification-title';
+            titleDiv.textContent = data.title;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.textContent = data.content;
+            
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'notification-time';
+            timeDiv.textContent = new Date().toLocaleTimeString();
+            
+            notificationDiv.appendChild(titleDiv);
+            notificationDiv.appendChild(contentDiv);
+            notificationDiv.appendChild(timeDiv);
+            
+            notifications.insertBefore(notificationDiv, notifications.firstChild);
+        }
+    </script>
+</body>
+</html>

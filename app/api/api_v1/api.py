@@ -19,6 +19,7 @@ from app.api.api_v1.endpoints import (
     support,
     themes,
     login,
+    realtime,
 )
 
 api_router = APIRouter()
@@ -34,3 +35,4 @@ api_router.include_router(gamification.router, prefix="/gamification", tags=["ga
 api_router.include_router(accessibility.router, prefix="/accessibility", tags=["accessibility"])
 api_router.include_router(support.router, prefix="/support", tags=["support"])
 api_router.include_router(themes.router, prefix="/themes", tags=["themes"])
+api_router.include_router(realtime.router, prefix="/realtime", tags=["realtime"])

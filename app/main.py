@@ -36,6 +36,9 @@ app.add_middleware(
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
+# Include WebSocket router
+app.include_router(websocket_router)
+
 
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
