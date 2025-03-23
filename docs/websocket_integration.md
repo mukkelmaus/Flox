@@ -6,6 +6,12 @@ This guide provides detailed information for frontend developers to integrate wi
 
 OneTask provides real-time updates through WebSocket connections for task management and notifications. This enables instant UI updates when tasks are created, updated, or completed, as well as delivering system notifications to users.
 
+### Key Features
+
+1. **Personal Notifications** - Receive personal notifications for tasks you own
+2. **Workspace Broadcasts** - Real-time updates for all workspace members when tasks are created, updated, completed, or deleted
+3. **Focus Session Collaboration** - Real-time updates for collaborative focus sessions
+
 ## Available WebSocket Endpoints
 
 The following WebSocket endpoints are available for real-time features:
@@ -44,7 +50,7 @@ const socket = new WebSocket(`wss://your-domain.com/api/v1/ws/notifications?toke
 
 **Endpoint:** `/api/v1/ws/workspaces/{workspace_id}/tasks`
 
-This WebSocket provides real-time updates for tasks within a specific workspace.
+This WebSocket provides real-time updates for tasks within a specific workspace. All workspace members receive broadcasts when tasks are created, updated, completed, or deleted within the workspace.
 
 **Authentication:** Required through token parameter
 
@@ -60,16 +66,11 @@ const socket = new WebSocket(`wss://your-domain.com/api/v1/ws/workspaces/${works
 {
   "type": "task_update",
   "action": "created", // or "updated", "deleted", "completed"
-  "data": {
-    "id": 456,
-    "title": "New Task",
-    "description": "Task description",
-    "status": "todo",
-    "priority": "high",
-    "due_date": "2025-04-01T12:00:00Z",
-    "workspace_id": 789,
-    "user_id": 101
-  }
+  "task_id": 456,
+  "task_title": "New Task",
+  "workspace_id": 789,
+  "timestamp": "2025-03-23T22:45:00.000Z",
+  "actor_id": 101
 }
 ```
 
@@ -160,6 +161,72 @@ The system will automatically send notifications for the following task events:
 4. **Task Deleted** - When a task is deleted (soft delete)
 
 Each notification includes information about the task and the action performed.
+
+## Workspace Broadcasts
+
+The system now supports real-time workspace-specific broadcasts for collaborative task management:
+
+### How Workspace Broadcasts Work
+
+1. **Automatic Broadcasting** - Any task created, updated, completed, or deleted within a workspace is automatically broadcast to all workspace members
+2. **Actor Exclusion** - The user who performed the action doesn't receive the broadcast (to avoid duplicate notifications)
+3. **Task Context** - Each broadcast message includes the task ID, title, action performed, workspace ID, timestamp, and the ID of the user who performed the action
+
+### Implementation Details
+
+- When connected to the workspace tasks WebSocket, you'll receive broadcasts about all task activities in the workspace
+- This enables real-time task boards and collaborative workspaces where all members can see changes as they happen
+- Broadcasts are sent in addition to personal notifications, allowing for both personal task management and collaborative workspace views
+
+### Integration Example
+
+```javascript
+// Connect to workspace task updates WebSocket
+const token = getAuthToken();
+const workspaceId = 789; // Your workspace ID
+const workspaceSocket = new WebSocket(`wss://your-domain.com/api/v1/ws/workspaces/${workspaceId}/tasks?token=${token}`);
+
+// Handle connection open
+workspaceSocket.onopen = (event) => {
+  console.log(`Connected to workspace ${workspaceId} task updates`);
+};
+
+// Handle incoming task update broadcasts
+workspaceSocket.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  
+  if (message.type === "task_update") {
+    // Process task update based on action
+    switch (message.action) {
+      case "created":
+        // Add new task to workspace board
+        addTaskToBoard(message.task_id, message.task_title, message.workspace_id);
+        break;
+      case "updated":
+        // Update existing task on workspace board
+        updateTaskOnBoard(message.task_id, message.task_title);
+        break;
+      case "completed":
+        // Move task to completed section
+        markTaskAsCompleted(message.task_id);
+        break;
+      case "deleted":
+        // Remove task from workspace board
+        removeTaskFromBoard(message.task_id);
+        break;
+    }
+    
+    // Show a toast notification about the action
+    showActivityToast(`Task "${message.task_title}" was ${message.action} by a team member`);
+  }
+};
+
+// Implement reconnection logic for robust WebSocket connections
+workspaceSocket.onclose = (event) => {
+  console.log(`Disconnected from workspace ${workspaceId} updates`);
+  setTimeout(() => connectToWorkspace(workspaceId), 5000);
+};
+```
 
 ## Best Practices
 

@@ -109,7 +109,7 @@
             </div>
             
             <div class="col-md-6">
-                <div class="card">
+                <div class="card mb-4">
                     <div class="card-header">Messages</div>
                     <div class="card-body">
                         <div class="message-container" id="messageContainer">
@@ -119,6 +119,41 @@
                         </div>
                         <div class="d-grid">
                             <button id="clearBtn" class="btn btn-secondary">Clear Messages</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Workspace-specific Broadcasts Test Section -->
+                <div class="card" id="workspaceBroadcastCard" style="display: none;">
+                    <div class="card-header">Test Workspace Broadcasts</div>
+                    <div class="card-body">
+                        <p class="card-text">
+                            Test the workspace broadcast feature by simulating task actions in another window.
+                            Connect to the same workspace in multiple browser windows to see real-time updates.
+                        </p>
+                        
+                        <div class="mb-3">
+                            <label for="testTaskId" class="form-label">Task ID</label>
+                            <input type="number" class="form-control" id="testTaskId" placeholder="Enter task ID">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="testTaskTitle" class="form-label">Task Title</label>
+                            <input type="text" class="form-control" id="testTaskTitle" placeholder="Enter task title">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="testActorId" class="form-label">Actor ID (optional)</label>
+                            <input type="number" class="form-control" id="testActorId" placeholder="Enter actor ID">
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-primary test-action-btn" data-action="created">Created</button>
+                                <button type="button" class="btn btn-outline-info test-action-btn" data-action="updated">Updated</button>
+                                <button type="button" class="btn btn-outline-success test-action-btn" data-action="completed">Completed</button>
+                                <button type="button" class="btn btn-outline-danger test-action-btn" data-action="deleted">Deleted</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -140,6 +175,11 @@
         const connectionUrl = document.getElementById('connectionUrl');
         const messageContainer = document.getElementById('messageContainer');
         const clearBtn = document.getElementById('clearBtn');
+        const workspaceBroadcastCard = document.getElementById('workspaceBroadcastCard');
+        const testTaskId = document.getElementById('testTaskId');
+        const testTaskTitle = document.getElementById('testTaskTitle');
+        const testActorId = document.getElementById('testActorId');
+        const testActionBtns = document.querySelectorAll('.test-action-btn');
         
         // WebSocket connection
         let socket = null;
@@ -147,8 +187,12 @@
         // Show/hide additional fields based on WebSocket type
         websocketTypeRadios.forEach(radio => {
             radio.addEventListener('change', () => {
-                workspaceIdContainer.style.display = radio.value === 'tasks' ? 'block' : 'none';
+                const isTasks = radio.value === 'tasks';
+                workspaceIdContainer.style.display = isTasks ? 'block' : 'none';
                 sessionIdContainer.style.display = radio.value === 'focus' ? 'block' : 'none';
+                
+                // Show/hide workspace broadcast test card
+                workspaceBroadcastCard.style.display = isTasks ? 'block' : 'none';
             });
         });
         
@@ -264,6 +308,51 @@
             messageContainer.innerHTML = '';
         });
         
+        // Set up test action buttons for workspace broadcasts
+        testActionBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Check if connected to task WebSocket
+                if (!socket || workspaceBroadcastCard.style.display === 'none') {
+                    addMessage('error', 'You must be connected to a workspace tasks WebSocket to test broadcasts.');
+                    return;
+                }
+                
+                const taskId = testTaskId.value.trim();
+                const taskTitle = testTaskTitle.value.trim();
+                
+                if (!taskId || !taskTitle) {
+                    addMessage('error', 'Please enter both task ID and task title for testing.');
+                    return;
+                }
+                
+                const action = btn.getAttribute('data-action');
+                const workspaceId = workspaceIdInput.value.trim();
+                const actorId = testActorId.value.trim() || Math.floor(Math.random() * 1000);
+                
+                // Create test message in the correct format
+                const testMessage = {
+                    type: "task_update",
+                    action: action,
+                    task_id: parseInt(taskId),
+                    task_title: taskTitle,
+                    workspace_id: parseInt(workspaceId),
+                    timestamp: new Date().toISOString(),
+                    actor_id: parseInt(actorId)
+                };
+                
+                // Display the test message
+                addMessage('sent', JSON.stringify(testMessage, null, 2));
+                
+                // In a real scenario, this would be sent through an API
+                // For testing, we can pretend that this was received from another client
+                // sendToAPI(`/api/v1/test/broadcast`, testMessage);
+                
+                // For demo purposes, you can paste this URL in another browser window to see the broadcast:
+                const demoUrl = `${window.location.origin}${window.location.pathname}?task_id=${taskId}&task_title=${encodeURIComponent(taskTitle)}&workspace_id=${workspaceId}`;
+                addMessage('system', `Demo URL to test in another window: ${demoUrl}`);
+            });
+        });
+        
         // Add message to container
         function addMessage(type, content) {
             const messageDiv = document.createElement('div');
@@ -278,6 +367,10 @@
                     break;
                 case 'received':
                     typeDiv.textContent = '📥 RECEIVED';
+                    break;
+                case 'sent':
+                    typeDiv.textContent = '📤 SENT';
+                    messageDiv.style.borderColor = 'var(--bs-primary)';
                     break;
                 case 'error':
                     typeDiv.textContent = '❌ ERROR';
@@ -297,6 +390,31 @@
             messageContainer.appendChild(messageDiv);
             messageContainer.scrollTop = messageContainer.scrollHeight;
         }
+        
+        // Check URL parameters for demo mode
+        function checkUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const taskId = urlParams.get('task_id');
+            const taskTitle = urlParams.get('task_title');
+            const workspaceId = urlParams.get('workspace_id');
+            
+            if (taskId && taskTitle && workspaceId) {
+                // Pre-fill the test inputs
+                testTaskId.value = taskId;
+                testTaskTitle.value = taskTitle;
+                workspaceIdInput.value = workspaceId;
+                
+                // Select the tasks WebSocket type
+                document.getElementById('tasksType').checked = true;
+                workspaceIdContainer.style.display = 'block';
+                workspaceBroadcastCard.style.display = 'block';
+                
+                addMessage('system', 'Demo mode: Values pre-filled from URL parameters');
+            }
+        }
+        
+        // Initialize
+        checkUrlParams();
     </script>
 </body>
 </html>
