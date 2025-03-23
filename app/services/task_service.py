@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 
 from app.models.task import Task, SubTask, TaskTag
 from app.schemas.task import TaskCreate, TaskUpdate, TaskFocusMode
+from app.websockets.notification_handlers import send_task_notification
 
 
 def get_tasks(
@@ -79,7 +80,7 @@ def get_task(
     ).first()
 
 
-def create_task(
+async def create_task(
     db: Session,
     task_in: TaskCreate,
     user_id: int,
@@ -140,10 +141,20 @@ def create_task(
         db.commit()
         db.refresh(db_task)
     
+    # Send real-time notification
+    await send_task_notification(
+        db=db,
+        user_id=user_id,
+        task_id=db_task.id,
+        task_title=db_task.title,
+        action="created",
+        workspace_id=db_task.workspace_id,
+    )
+    
     return db_task
 
 
-def update_task(
+async def update_task(
     db: Session,
     task: Task,
     task_in: TaskUpdate,
@@ -214,10 +225,25 @@ def update_task(
     db.commit()
     db.refresh(task)
     
+    # Determine the notification action
+    action = "updated"
+    if old_status != "done" and new_status == "done":
+        action = "completed"
+    
+    # Send real-time notification
+    await send_task_notification(
+        db=db,
+        user_id=task.user_id,
+        task_id=task.id,
+        task_title=task.title,
+        action=action,
+        workspace_id=task.workspace_id,
+    )
+    
     return task
 
 
-def delete_task(
+async def delete_task(
     db: Session,
     task_id: int,
 ) -> None:
@@ -233,6 +259,16 @@ def delete_task(
         task.is_deleted = True
         db.add(task)
         db.commit()
+        
+        # Send real-time notification
+        await send_task_notification(
+            db=db,
+            user_id=task.user_id,
+            task_id=task.id,
+            task_title=task.title,
+            action="deleted",
+            workspace_id=task.workspace_id,
+        )
 
 
 def prioritize_tasks(
@@ -436,7 +472,7 @@ def get_focus_mode_tasks(
     )
 
 
-def mark_task_completed(
+async def mark_task_completed(
     db: Session,
     task: Task,
 ) -> Task:
@@ -517,6 +553,16 @@ def mark_task_completed(
     db.add(user_streak)
     db.commit()
     db.refresh(task)
+    
+    # Send real-time notification
+    await send_task_notification(
+        db=db,
+        user_id=task.user_id,
+        task_id=task.id,
+        task_title=task.title,
+        action="completed",
+        workspace_id=task.workspace_id,
+    )
     
     return task
 

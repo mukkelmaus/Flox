@@ -50,7 +50,7 @@ def read_tasks(
 
 
 @router.post("/", response_model=schemas.Task)
-def create_task(
+async def create_task(
     *,
     db: Session = Depends(get_db),
     task_in: schemas.TaskCreate,
@@ -61,8 +61,9 @@ def create_task(
     
     - All fields in the TaskCreate schema can be provided
     - User ID is automatically added based on authentication
+    - Notifications are sent via WebSocket when task is created
     """
-    task = task_service.create_task(db=db, task_in=task_in, user_id=current_user.id)
+    task = await task_service.create_task(db=db, task_in=task_in, user_id=current_user.id)
     return task
 
 
