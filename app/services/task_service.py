@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 
 from app.models.task import Task, SubTask, TaskTag
 from app.schemas.task import TaskCreate, TaskUpdate, TaskFocusMode
-from app.websockets.notification_handlers import send_task_notification
+from app.websockets.notification_handlers import send_task_notification, broadcast_task_update
 
 
 def get_tasks(
@@ -141,7 +141,7 @@ async def create_task(
         db.commit()
         db.refresh(db_task)
     
-    # Send real-time notification
+    # Send real-time notification to the task owner
     await send_task_notification(
         db=db,
         user_id=user_id,
@@ -150,6 +150,18 @@ async def create_task(
         action="created",
         workspace_id=db_task.workspace_id,
     )
+    
+    # If task is in a workspace, broadcast update to workspace members
+    if db_task.workspace_id:
+        await broadcast_task_update(
+            db=db,
+            task_id=db_task.id,
+            task_title=db_task.title,
+            action="created",
+            workspace_id=db_task.workspace_id,
+            actor_id=user_id,
+            exclude_user_ids=[user_id]  # Don't send to the task creator
+        )
     
     return db_task
 
@@ -230,7 +242,7 @@ async def update_task(
     if old_status != "done" and new_status == "done":
         action = "completed"
     
-    # Send real-time notification
+    # Send real-time notification to the task owner
     await send_task_notification(
         db=db,
         user_id=task.user_id,
@@ -239,6 +251,18 @@ async def update_task(
         action=action,
         workspace_id=task.workspace_id,
     )
+    
+    # If task is in a workspace, broadcast update to workspace members
+    if task.workspace_id:
+        await broadcast_task_update(
+            db=db,
+            task_id=task.id,
+            task_title=task.title,
+            action=action,
+            workspace_id=task.workspace_id,
+            actor_id=task.user_id,
+            exclude_user_ids=[task.user_id]  # Don't send to the task owner
+        )
     
     return task
 
@@ -260,7 +284,7 @@ async def delete_task(
         db.add(task)
         db.commit()
         
-        # Send real-time notification
+        # Send real-time notification to the task owner
         await send_task_notification(
             db=db,
             user_id=task.user_id,
@@ -269,6 +293,18 @@ async def delete_task(
             action="deleted",
             workspace_id=task.workspace_id,
         )
+        
+        # If task is in a workspace, broadcast update to workspace members
+        if task.workspace_id:
+            await broadcast_task_update(
+                db=db,
+                task_id=task.id,
+                task_title=task.title,
+                action="deleted",
+                workspace_id=task.workspace_id,
+                actor_id=task.user_id,
+                exclude_user_ids=[task.user_id]  # Don't send to the task owner
+            )
 
 
 def prioritize_tasks(
@@ -554,7 +590,7 @@ async def mark_task_completed(
     db.commit()
     db.refresh(task)
     
-    # Send real-time notification
+    # Send real-time notification to the task owner
     await send_task_notification(
         db=db,
         user_id=task.user_id,
@@ -563,6 +599,18 @@ async def mark_task_completed(
         action="completed",
         workspace_id=task.workspace_id,
     )
+    
+    # If task is in a workspace, broadcast update to workspace members
+    if task.workspace_id:
+        await broadcast_task_update(
+            db=db,
+            task_id=task.id,
+            task_title=task.title,
+            action="completed",
+            workspace_id=task.workspace_id,
+            actor_id=task.user_id,
+            exclude_user_ids=[task.user_id]  # Don't send to the task owner
+        )
     
     return task
 

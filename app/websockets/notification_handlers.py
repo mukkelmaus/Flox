@@ -2,12 +2,14 @@
 Notification handlers for WebSocket real-time features.
 """
 from typing import Dict, Any, Optional, List
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.models.notification import Notification
 from app.schemas.notification import NotificationCreate
 from app.services.notification_service import create_notification
 from app.websockets.connection_manager import manager
+from app.models.workspace import WorkspaceMember, Workspace
 
 
 async def send_task_notification(
@@ -90,8 +92,6 @@ async def send_workspace_notification(
         data: Optional additional data
         exclude_user_ids: Optional list of user IDs to exclude
     """
-    from app.models.workspace import WorkspaceMember, Workspace
-    
     exclude_user_ids = exclude_user_ids or []
     workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
     if not workspace:
@@ -177,3 +177,83 @@ async def send_system_notification(
         },
         user_id
     )
+
+
+async def broadcast_task_update(
+    db: Session,
+    task_id: int,
+    task_title: str,
+    action: str,
+    workspace_id: Optional[int] = None,
+    actor_id: Optional[int] = None,
+    exclude_user_ids: Optional[List[int]] = None,
+):
+    """
+    Broadcast a task update to all members of a workspace.
+    
+    Args:
+        db: Database session
+        task_id: Task ID
+        task_title: Task title
+        action: Action performed (created, updated, completed, etc.)
+        workspace_id: Workspace ID
+        actor_id: ID of the user who performed the action
+        exclude_user_ids: Optional list of user IDs to exclude from the broadcast
+    """
+    exclude_user_ids = exclude_user_ids or []
+    
+    # If no workspace_id, there's nothing to broadcast to
+    if not workspace_id:
+        return
+    
+    # Create a real-time update message
+    message = {
+        "type": "task_update",
+        "task_id": task_id,
+        "task_title": task_title,
+        "action": action,
+        "workspace_id": workspace_id,
+        "timestamp": datetime.now().isoformat(),
+        "actor_id": actor_id
+    }
+    
+    # Broadcast the message to all members of the workspace
+    await manager.broadcast_to_workspace(message, workspace_id)
+    
+    # Also create notification records for all workspace members
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        return
+    
+    # Get workspace owner and members
+    owner_id = workspace.owner_id
+    members = db.query(WorkspaceMember).filter(
+        WorkspaceMember.workspace_id == workspace_id
+    ).all()
+    
+    user_ids = [owner_id] + [member.user_id for member in members]
+    
+    # Remove excluded users and the actor (who doesn't need a notification about their own action)
+    all_excluded_ids = exclude_user_ids[:]
+    if actor_id and actor_id not in all_excluded_ids:
+        all_excluded_ids.append(actor_id)
+    
+    user_ids = [user_id for user_id in user_ids if user_id not in all_excluded_ids]
+    
+    # Create notifications for all members
+    for user_id in user_ids:
+        notification_data = NotificationCreate(
+            title=f"Task {action}",
+            content=f"Task '{task_title}' was {action} in workspace.",
+            type="task",
+            related_entity_type="task",
+            related_entity_id=task_id,
+            data={
+                "task_id": task_id,
+                "action": action,
+                "workspace_id": workspace_id,
+                "actor_id": actor_id
+            }
+        )
+        
+        create_notification(db, notification_data, user_id)
