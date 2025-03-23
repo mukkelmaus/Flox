@@ -87,7 +87,7 @@ def read_task(
 
 
 @router.put("/{task_id}", response_model=schemas.Task)
-def update_task(
+async def update_task(
     *,
     db: Session = Depends(get_db),
     task_id: int,
@@ -100,16 +100,17 @@ def update_task(
     - Any fields in the TaskUpdate schema can be provided
     - Only fields that are provided will be updated
     - Only accessible if the task belongs to the current user
+    - Notifications are sent via WebSocket when task is updated
     """
     task = task_service.get_task(db=db, task_id=task_id, user_id=current_user.id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    task = task_service.update_task(db=db, task=task, task_in=task_in)
+    task = await task_service.update_task(db=db, task=task, task_in=task_in)
     return task
 
 
 @router.delete("/{task_id}", response_model=schemas.Task)
-def delete_task(
+async def delete_task(
     *,
     db: Session = Depends(get_db),
     task_id: int,
@@ -121,11 +122,12 @@ def delete_task(
     - Soft delete (is_deleted flag is set to True)
     - Task can still be recovered if needed
     - Only accessible if the task belongs to the current user
+    - Notifications are sent via WebSocket when task is deleted
     """
     task = task_service.get_task(db=db, task_id=task_id, user_id=current_user.id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    task_service.delete_task(db=db, task_id=task_id)
+    await task_service.delete_task(db=db, task_id=task_id)
     return task
 
 
@@ -152,7 +154,7 @@ def prioritize_tasks(
 
 
 @router.post("/{task_id}/complete", response_model=schemas.Task)
-def mark_task_completed(
+async def mark_task_completed(
     *,
     db: Session = Depends(get_db),
     task_id: int,
@@ -164,11 +166,13 @@ def mark_task_completed(
     - Sets status to "done" and records completion timestamp
     - Updates task history
     - Only accessible if the task belongs to the current user
+    - Notifications are sent via WebSocket when task is completed
+    - Updates gamification stats and streaks
     """
     task = task_service.get_task(db=db, task_id=task_id, user_id=current_user.id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    task = task_service.mark_task_completed(db=db, task=task)
+    task = await task_service.mark_task_completed(db=db, task=task)
     return task
 
 

@@ -1,8 +1,10 @@
 import logging
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
+from fastapi.staticfiles import StaticFiles
 from starlette.responses import JSONResponse
 
 from app.api.api_v1.api import api_router
@@ -38,6 +40,11 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # Include WebSocket router
 app.include_router(websocket_router)
+
+# Mount static files directory
+public_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "public")
+if os.path.exists(public_dir):
+    app.mount("/static", StaticFiles(directory=public_dir), name="static")
 
 
 @app.get("/docs", include_in_schema=False)

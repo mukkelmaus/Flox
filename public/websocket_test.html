@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OneTask WebSocket Test</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .message-container {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--bs-border-color);
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 20px;
+            background-color: var(--bs-body-bg);
+        }
+        .message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            background-color: var(--bs-dark);
+            border-left: 3px solid var(--bs-info);
+        }
+        .message-type {
+            font-weight: bold;
+            color: var(--bs-info);
+            margin-bottom: 5px;
+        }
+        .message-content {
+            font-family: monospace;
+            white-space: pre-wrap;
+            color: var(--bs-light);
+        }
+        .control-panel {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">OneTask WebSocket Test</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">Connection Settings</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="tokenInput" class="form-label">JWT Token</label>
+                            <input type="text" class="form-control" id="tokenInput" placeholder="Enter your JWT token">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">WebSocket Type</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="websocketType" id="notificationsType" value="notifications" checked>
+                                <label class="form-check-label" for="notificationsType">
+                                    Notifications
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="websocketType" id="tasksType" value="tasks">
+                                <label class="form-check-label" for="tasksType">
+                                    Tasks
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="websocketType" id="focusType" value="focus">
+                                <label class="form-check-label" for="focusType">
+                                    Focus Session
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="workspaceIdContainer" style="display: none;">
+                            <label for="workspaceIdInput" class="form-label">Workspace ID</label>
+                            <input type="number" class="form-control" id="workspaceIdInput" placeholder="Enter workspace ID">
+                        </div>
+                        
+                        <div class="mb-3" id="sessionIdContainer" style="display: none;">
+                            <label for="sessionIdInput" class="form-label">Session ID</label>
+                            <input type="text" class="form-control" id="sessionIdInput" placeholder="Enter session ID">
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button id="connectBtn" class="btn btn-primary">Connect</button>
+                            <button id="disconnectBtn" class="btn btn-danger" disabled>Disconnect</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Connection Status</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <div id="connectionStatus" class="alert alert-secondary">Disconnected</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Connection URL</label>
+                            <div id="connectionUrl" class="alert alert-secondary">Not connected</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Messages</div>
+                    <div class="card-body">
+                        <div class="message-container" id="messageContainer">
+                            <div class="alert alert-info">
+                                Connect to a WebSocket to see messages here.
+                            </div>
+                        </div>
+                        <div class="d-grid">
+                            <button id="clearBtn" class="btn btn-secondary">Clear Messages</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const tokenInput = document.getElementById('tokenInput');
+        const websocketTypeRadios = document.getElementsByName('websocketType');
+        const workspaceIdContainer = document.getElementById('workspaceIdContainer');
+        const workspaceIdInput = document.getElementById('workspaceIdInput');
+        const sessionIdContainer = document.getElementById('sessionIdContainer');
+        const sessionIdInput = document.getElementById('sessionIdInput');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const connectionUrl = document.getElementById('connectionUrl');
+        const messageContainer = document.getElementById('messageContainer');
+        const clearBtn = document.getElementById('clearBtn');
+        
+        // WebSocket connection
+        let socket = null;
+        
+        // Show/hide additional fields based on WebSocket type
+        websocketTypeRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                workspaceIdContainer.style.display = radio.value === 'tasks' ? 'block' : 'none';
+                sessionIdContainer.style.display = radio.value === 'focus' ? 'block' : 'none';
+            });
+        });
+        
+        // Connect to WebSocket
+        connectBtn.addEventListener('click', () => {
+            if (socket) {
+                addMessage('system', 'Already connected. Please disconnect first.');
+                return;
+            }
+            
+            const token = tokenInput.value.trim();
+            if (!token) {
+                addMessage('system', 'Please enter a JWT token.');
+                return;
+            }
+            
+            let websocketType = 'notifications';
+            websocketTypeRadios.forEach(radio => {
+                if (radio.checked) {
+                    websocketType = radio.value;
+                }
+            });
+            
+            let url = '';
+            switch (websocketType) {
+                case 'notifications':
+                    url = `/api/v1/ws/notifications?token=${token}`;
+                    break;
+                case 'tasks':
+                    const workspaceId = workspaceIdInput.value.trim();
+                    if (!workspaceId) {
+                        addMessage('system', 'Please enter a workspace ID.');
+                        return;
+                    }
+                    url = `/api/v1/ws/workspaces/${workspaceId}/tasks?token=${token}`;
+                    break;
+                case 'focus':
+                    const sessionId = sessionIdInput.value.trim();
+                    if (!sessionId) {
+                        addMessage('system', 'Please enter a session ID.');
+                        return;
+                    }
+                    url = `/api/v1/ws/focus-sessions/${sessionId}?token=${token}`;
+                    break;
+            }
+            
+            // Determine WebSocket URL (use secure WebSocket if the page is loaded over HTTPS)
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}${url}`;
+            
+            try {
+                socket = new WebSocket(wsUrl);
+                
+                socket.onopen = (event) => {
+                    connectionStatus.textContent = 'Connected';
+                    connectionStatus.className = 'alert alert-success';
+                    connectionUrl.textContent = wsUrl;
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                    addMessage('system', 'Connected to WebSocket');
+                };
+                
+                socket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        addMessage('received', JSON.stringify(data, null, 2));
+                    } catch (error) {
+                        addMessage('received', event.data);
+                    }
+                };
+                
+                socket.onerror = (error) => {
+                    connectionStatus.textContent = 'Error';
+                    connectionStatus.className = 'alert alert-danger';
+                    addMessage('error', 'WebSocket error occurred');
+                    console.error('WebSocket error:', error);
+                };
+                
+                socket.onclose = (event) => {
+                    connectionStatus.textContent = 'Disconnected';
+                    connectionStatus.className = 'alert alert-secondary';
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    socket = null;
+                    
+                    if (event.wasClean) {
+                        addMessage('system', `Disconnected cleanly, code=${event.code}, reason=${event.reason}`);
+                    } else {
+                        addMessage('error', 'Connection died');
+                    }
+                };
+            } catch (error) {
+                addMessage('error', `Failed to connect: ${error.message}`);
+            }
+        });
+        
+        // Disconnect from WebSocket
+        disconnectBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.close();
+                socket = null;
+                connectionStatus.textContent = 'Disconnected';
+                connectionStatus.className = 'alert alert-secondary';
+                connectionUrl.textContent = 'Not connected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                addMessage('system', 'Disconnected from WebSocket');
+            }
+        });
+        
+        // Clear messages
+        clearBtn.addEventListener('click', () => {
+            messageContainer.innerHTML = '';
+        });
+        
+        // Add message to container
+        function addMessage(type, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            
+            const typeDiv = document.createElement('div');
+            typeDiv.className = 'message-type';
+            
+            switch (type) {
+                case 'system':
+                    typeDiv.textContent = '🔧 SYSTEM';
+                    break;
+                case 'received':
+                    typeDiv.textContent = '📥 RECEIVED';
+                    break;
+                case 'error':
+                    typeDiv.textContent = '❌ ERROR';
+                    messageDiv.style.borderColor = 'var(--bs-danger)';
+                    break;
+                default:
+                    typeDiv.textContent = type.toUpperCase();
+            }
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            messageDiv.appendChild(typeDiv);
+            messageDiv.appendChild(contentDiv);
+            
+            messageContainer.appendChild(messageDiv);
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+    </script>
+</body>
+</html>
