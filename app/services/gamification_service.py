@@ -173,7 +173,7 @@ def update_achievement_progress(
     return user_achievement
 
 
-def check_achievements(db: Session, user_id: int) -> Dict[str, Any]:
+async def check_achievements(db: Session, user_id: int) -> Dict[str, Any]:
     """
     Check and update achievements for a user.
     
@@ -184,6 +184,12 @@ def check_achievements(db: Session, user_id: int) -> Dict[str, Any]:
     Returns:
         Results of achievement checks
     """
+    # Import here to avoid circular imports
+    from app.websockets.notification_handlers import (
+        send_achievement_notification,
+        send_achievement_progress_notification
+    )
+    
     # Get user stats
     stats = get_user_stats(db, user_id)
     
@@ -230,13 +236,25 @@ def check_achievements(db: Session, user_id: int) -> Dict[str, Any]:
             progress = min(1.0, current / target) if target > 0 else 0.0
             data = {"current": current, "target": target}
         
+        # Get previous achievement progress to detect newly unlocked or progress updates
+        previous_achievement = db.query(UserAchievement).filter(
+            UserAchievement.user_id == user_id,
+            UserAchievement.achievement_id == achievement.id
+        ).first()
+        
+        previous_progress = previous_achievement.progress if previous_achievement else 0.0
+        was_previously_unlocked = previous_achievement and previous_achievement.unlocked_at is not None
+        
         # Update achievement progress
         user_achievement = update_achievement_progress(
             db, user_id, achievement.id, progress
         )
         
-        # Check if newly unlocked
-        if user_achievement.unlocked_at and progress >= 1.0:
+        # Check if newly unlocked (unlocked during this check)
+        newly_unlocked = user_achievement.unlocked_at and progress >= 1.0 and not was_previously_unlocked
+        
+        if newly_unlocked:
+            # Achievement was just unlocked
             unlocked.append({
                 "id": achievement.id,
                 "name": achievement.name,
@@ -244,13 +262,25 @@ def check_achievements(db: Session, user_id: int) -> Dict[str, Any]:
                 "points": achievement.points,
                 "icon": achievement.icon
             })
-        elif progress > 0:
+            
+            # Send WebSocket notification for achievement unlock
+            await send_achievement_notification(
+                db, user_id, achievement.id, achievement.points
+            )
+            
+        elif progress > 0 and progress > previous_progress:
+            # Achievement progress was updated
             updated.append({
                 "id": achievement.id,
                 "name": achievement.name,
                 "progress": progress,
                 "data": data
             })
+            
+            # Send WebSocket notification for achievement progress update if it's a milestone
+            await send_achievement_progress_notification(
+                db, user_id, achievement.id, progress
+            )
     
     return {
         "unlocked": unlocked,
@@ -260,7 +290,7 @@ def check_achievements(db: Session, user_id: int) -> Dict[str, Any]:
     }
 
 
-def update_streak(db: Session, user_id: int) -> UserStreak:
+async def update_streak(db: Session, user_id: int) -> UserStreak:
     """
     Update a user's streak.
     
@@ -271,8 +301,12 @@ def update_streak(db: Session, user_id: int) -> UserStreak:
     Returns:
         Updated user streak
     """
+    # Import here to avoid circular imports
+    from app.websockets.notification_handlers import send_streak_notification
+    
     # Get user streak
     streak = get_user_streak(db, user_id)
+    old_streak = streak.current_streak
     
     # Calculate streak state
     today = datetime.now().date()
@@ -315,6 +349,20 @@ def update_streak(db: Session, user_id: int) -> UserStreak:
     
     db.commit()
     db.refresh(streak)
+    
+    # Send streak notification if streak increased
+    if streak.current_streak > old_streak:
+        # Check if this is a milestone streak (3, 7, 14, 30 days)
+        milestone_streaks = [3, 7, 14, 30, 60, 90, 180, 365]
+        is_milestone = streak.current_streak in milestone_streaks
+        
+        # Send the streak notification
+        await send_streak_notification(
+            db, user_id, streak.current_streak, is_milestone
+        )
+        
+        # Check achievements after streak update
+        await check_achievements(db, user_id)
     
     return streak
 

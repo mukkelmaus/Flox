@@ -1,11 +1,15 @@
 """
 Notification handlers for WebSocket real-time features.
+
+This module handles WebSocket notifications for tasks, achievements, streaks,
+and other real-time features.
 """
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.models.notification import Notification
+from app.models.gamification import Achievement, UserAchievement
 from app.schemas.notification import NotificationCreate
 from app.services.notification_service import create_notification
 from app.websockets.connection_manager import manager
@@ -257,3 +261,210 @@ async def broadcast_task_update(
         )
         
         create_notification(db, notification_data, user_id)
+
+
+async def send_achievement_notification(
+    db: Session,
+    user_id: int,
+    achievement_id: int,
+    points: int,
+):
+    """
+    Send an achievement unlock notification.
+    
+    Args:
+        db: Database session
+        user_id: User ID
+        achievement_id: Achievement ID
+        points: Points awarded
+    """
+    # Get achievement details
+    achievement = db.query(Achievement).filter(Achievement.id == achievement_id).first()
+    if not achievement:
+        return
+    
+    # Create notification
+    notification_data = NotificationCreate(
+        title="Achievement Unlocked!",
+        content=f"You've unlocked the '{achievement.name}' achievement and earned {points} points!",
+        type="achievement",
+        related_entity_type="achievement",
+        related_entity_id=achievement_id,
+        data={
+            "achievement_id": achievement_id,
+            "achievement_name": achievement.name,
+            "achievement_description": achievement.description,
+            "points": points,
+            "icon": achievement.icon,
+            "level": achievement.level
+        }
+    )
+    
+    notification = create_notification(db, notification_data, user_id)
+    
+    # Send real-time notification via WebSocket
+    await manager.send_personal_message(
+        {
+            "type": "achievement_unlocked",
+            "notification_id": notification.id,
+            "title": notification.title,
+            "content": notification.content,
+            "notification_type": notification.type,
+            "related_entity_type": notification.related_entity_type,
+            "related_entity_id": notification.related_entity_id,
+            "created_at": notification.created_at.isoformat(),
+            "data": notification.data
+        },
+        user_id
+    )
+
+
+async def send_achievement_progress_notification(
+    db: Session,
+    user_id: int,
+    achievement_id: int,
+    progress: float,
+):
+    """
+    Send an achievement progress notification.
+    
+    Args:
+        db: Database session
+        user_id: User ID
+        achievement_id: Achievement ID
+        progress: Progress value (0.0 to 1.0)
+    """
+    # Get achievement details
+    achievement = db.query(Achievement).filter(Achievement.id == achievement_id).first()
+    if not achievement:
+        return
+    
+    # Only send progress notifications for significant progress (e.g., 25%, 50%, 75%)
+    progress_percent = int(progress * 100)
+    if progress_percent % 25 != 0 or progress_percent == 0 or progress_percent == 100:
+        return
+    
+    # Create notification
+    notification_data = NotificationCreate(
+        title="Achievement Progress",
+        content=f"You're {progress_percent}% of the way to unlocking '{achievement.name}'!",
+        type="achievement_progress",
+        related_entity_type="achievement",
+        related_entity_id=achievement_id,
+        data={
+            "achievement_id": achievement_id,
+            "achievement_name": achievement.name,
+            "progress": progress,
+            "progress_percent": progress_percent,
+            "icon": achievement.icon
+        }
+    )
+    
+    notification = create_notification(db, notification_data, user_id)
+    
+    # Send real-time notification via WebSocket
+    await manager.send_personal_message(
+        {
+            "type": "achievement_progress",
+            "notification_id": notification.id,
+            "title": notification.title,
+            "content": notification.content,
+            "notification_type": notification.type,
+            "related_entity_type": notification.related_entity_type,
+            "related_entity_id": notification.related_entity_id,
+            "created_at": notification.created_at.isoformat(),
+            "data": notification.data
+        },
+        user_id
+    )
+
+
+async def send_streak_notification(
+    db: Session,
+    user_id: int,
+    current_streak: int,
+    is_milestone: bool = False,
+):
+    """
+    Send a streak notification.
+    
+    Args:
+        db: Database session
+        user_id: User ID
+        current_streak: Current streak count
+        is_milestone: Whether this is a milestone streak (e.g., 3, 7, 14, 30 days)
+    """
+    # Determine notification type and message
+    title = "Streak Continued" if not is_milestone else "Streak Milestone!"
+    
+    if is_milestone:
+        content = f"Amazing! You've maintained a {current_streak}-day streak. Keep up the great work!"
+    else:
+        content = f"You've maintained your streak for {current_streak} consecutive days!"
+    
+    # Create notification
+    notification_data = NotificationCreate(
+        title=title,
+        content=content,
+        type="streak",
+        data={
+            "current_streak": current_streak,
+            "is_milestone": is_milestone
+        }
+    )
+    
+    notification = create_notification(db, notification_data, user_id)
+    
+    # Send real-time notification via WebSocket
+    await manager.send_personal_message(
+        {
+            "type": "streak_update",
+            "notification_id": notification.id,
+            "title": notification.title,
+            "content": notification.content,
+            "notification_type": notification.type,
+            "created_at": notification.created_at.isoformat(),
+            "data": notification.data
+        },
+        user_id
+    )
+
+
+async def send_level_up_notification(
+    db: Session,
+    user_id: int,
+    new_level: int,
+):
+    """
+    Send a level up notification.
+    
+    Args:
+        db: Database session
+        user_id: User ID
+        new_level: New level
+    """
+    # Create notification
+    notification_data = NotificationCreate(
+        title="Level Up!",
+        content=f"Congratulations! You've reached level {new_level}!",
+        type="level_up",
+        data={
+            "new_level": new_level
+        }
+    )
+    
+    notification = create_notification(db, notification_data, user_id)
+    
+    # Send real-time notification via WebSocket
+    await manager.send_personal_message(
+        {
+            "type": "level_up",
+            "notification_id": notification.id,
+            "title": notification.title,
+            "content": notification.content,
+            "notification_type": notification.type,
+            "created_at": notification.created_at.isoformat(),
+            "data": notification.data
+        },
+        user_id
+    )
