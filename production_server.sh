@@ -1,19 +1,23 @@
 #!/bin/bash
-# Production server script for OneTask API
-# This script runs the FastAPI app with Gunicorn and UvicornWorker for ASGI support
+# Production server startup script for OneTask API
+# This script uses the optimal Gunicorn configuration for production deployment
 
-echo "Starting OneTask API in production mode (FastAPI + Gunicorn + UvicornWorker)"
-echo "API documentation will be available at: http://localhost:5000/docs"
+# Set environment variables for production
+export ENVIRONMENT=production
 
-# Export necessary environment variables
-export PYTHONPATH=.
-
-# Run with Gunicorn and UvicornWorker
-gunicorn --worker-class uvicorn.workers.UvicornWorker \
-         --workers 4 \
-         --bind 0.0.0.0:5000 \
-         --log-level info \
-         --timeout 120 \
-         --graceful-timeout 60 \
-         --keep-alive 5 \
-         app.main:app
+# Use Gunicorn with Uvicorn worker for FastAPI
+exec gunicorn \
+  --bind 0.0.0.0:5000 \
+  --workers 1 \
+  --worker-class uvicorn.workers.UvicornWorker \
+  --timeout 180 \
+  --keepalive 5 \
+  --max-requests 1000 \
+  --max-requests-jitter 50 \
+  --graceful-timeout 60 \
+  --log-level info \
+  --access-logfile - \
+  --error-logfile - \
+  --capture-output \
+  --forwarded-allow-ips="*" \
+  "wsgi:application"

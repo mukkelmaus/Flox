@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 from fastapi import FastAPI
@@ -26,16 +27,24 @@ app = FastAPI(
 )
 
 # Set CORS settings for production
-# Only allow specific origins in production
-origins = [
-    settings.SERVER_HOST,
-    "https://onetask.replit.app",
-    "https://*.replit.app"
-]
+allowed_origins = os.environ.get("ALLOWED_ORIGINS", "")
+if allowed_origins:
+    # Parse comma-separated origins from environment variable
+    origins = [origin.strip() for origin in allowed_origins.split(",")]
+    logger.info(f"CORS enabled for specific origins: {origins}")
+else:
+    # Fallback to defaults
+    origins = [
+        settings.SERVER_HOST,
+        "https://onetask.replit.app",
+        "https://*.replit.app"
+    ]
+    logger.info(f"CORS enabled with default origins: {origins}")
 
 # In development mode, allow all origins
 if settings.ENVIRONMENT.lower() == "development":
     origins = ["*"]
+    logger.info("CORS enabled for all origins (development mode)")
 
 app.add_middleware(
     CORSMiddleware,
@@ -95,7 +104,41 @@ async def root():
         "version": settings.VERSION,
         "description": settings.DESCRIPTION,
         "documentation": f"{settings.SERVER_HOST}/docs",
+        "environment": settings.ENVIRONMENT,
     }
+
+
+@app.get("/health", include_in_schema=False)
+async def health_check():
+    """
+    Health check endpoint for monitoring and load balancers
+    """
+    from app.db.session import SessionLocal
+    
+    health_status = {
+        "status": "healthy",
+        "timestamp": datetime.datetime.now().isoformat(),
+        "version": settings.VERSION,
+        "environment": settings.ENVIRONMENT,
+        "services": {
+            "api": "ok",
+            "database": "unknown"
+        }
+    }
+    
+    # Check database connection
+    db = SessionLocal()
+    try:
+        # Execute simple query to verify database connection
+        db.execute("SELECT 1")
+        health_status["services"]["database"] = "ok"
+    except Exception as e:
+        health_status["status"] = "degraded"
+        health_status["services"]["database"] = str(e)
+    finally:
+        db.close()
+        
+    return health_status
 
 
 if __name__ == "__main__":
