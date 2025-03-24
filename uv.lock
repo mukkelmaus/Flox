@@ -488,9 +488,6 @@ wheels = [
 name = "jose"
 version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pycrypto" },
-]
 sdist = { url = "https://files.pythonhosted.org/packages/01/3d/832caa69cd0d3be2d608d8290be2221072669aa88e87690837f6b31c480f/jose-1.0.0.tar.gz", hash = "sha256:8436c3617cd94e1ba97828fbb1ce27c129f66c78fb855b4bb47e122b5f345fba", size = 9153 }
 
 [[package]]
@@ -638,12 +635,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/a4/db/fffec68299e6d7bad
 wheels = [
     { url = "https://files.pythonhosted.org/packages/62/1e/a94a8d635fa3ce4cfc7f506003548d0a2447ae76fd5ca53932970fe3053f/pyasn1-0.4.8-py2.py3-none-any.whl", hash = "sha256:39c7e2ec30515947ff4e87fb6f456dfc6e84857d34be479c9d4a4ba4bf46aa5d", size = 77145 },
 ]
-
-[[package]]
-name = "pycrypto"
-version = "2.6.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/60/db/645aa9af249f059cc3a368b118de33889219e0362141e75d4eaf6f80f163/pycrypto-2.6.1.tar.gz", hash = "sha256:f2ce1e989b272cfcb677616763e0a2e7ec659effa67a88aa92b3a65528f60a3c", size = 446240 }
 
 [[package]]
 name = "pydantic"
@@ -848,6 +839,7 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "starlette" },
     { name = "uvicorn", extra = ["standard"] },
+    { name = "websockets" },
 ]
 
 [package.metadata]
@@ -876,6 +868,7 @@ requires-dist = [
     { name = "sqlalchemy", specifier = ">=2.0.39" },
     { name = "starlette", specifier = ">=0.46.1" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
+    { name = "websockets", specifier = ">=15.0.1" },
 ]
 
 [[package]]

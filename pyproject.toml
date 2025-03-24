@@ -28,4 +28,5 @@ dependencies = [
     "requests>=2.32.3",
     "jose>=1.0.0",
     "bcrypt>=4.3.0",
+    "websockets>=15.0.1",
 ]
