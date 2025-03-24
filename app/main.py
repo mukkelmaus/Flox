@@ -25,14 +25,24 @@ app = FastAPI(
     redoc_url=None,
 )
 
-# Set all CORS origins enabled for development
-# In production, this should be limited to specific origins
+# Set CORS settings for production
+# Only allow specific origins in production
+origins = [
+    settings.SERVER_HOST,
+    "https://onetask.replit.app",
+    "https://*.replit.app"
+]
+
+# In development mode, allow all origins
+if settings.ENVIRONMENT.lower() == "development":
+    origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "User-Agent"],
 )
 
 # Include API router
@@ -90,5 +100,21 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run("app.main:app", host="0.0.0.0", port=5000, reload=True)
+    
+    # We take the port from environment if available
+    port = int(os.environ.get("PORT", 5000))
+    
+    # Development settings
+    if settings.ENVIRONMENT.lower() == "development":
+        uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)
+    # Production settings
+    else:
+        uvicorn.run(
+            "app.main:app", 
+            host="0.0.0.0", 
+            port=port,
+            workers=1,
+            proxy_headers=True,
+            forwarded_allow_ips="*",
+            log_level="info"
+        )

@@ -153,5 +153,33 @@ else:
 if __name__ == "__main__":
     # When run directly, use Uvicorn to serve the FastAPI app
     import uvicorn
-    logger.info("Starting OneTask API with Uvicorn (ASGI mode)")
-    uvicorn.run("app.main:app", host="0.0.0.0", port=5000, reload=True)
+    
+    # Get port from environment, default to 5000
+    port = int(os.environ.get("PORT", 5000))
+    
+    # Get environment setting, default to production
+    env = os.environ.get("ENVIRONMENT", "production").lower()
+    reload_enabled = env == "development"
+    
+    logger.info(f"Starting OneTask API with Uvicorn (ASGI mode) in {env} environment")
+    
+    if env == "development":
+        # Development settings
+        uvicorn.run(
+            "app.main:app", 
+            host="0.0.0.0", 
+            port=port, 
+            reload=True, 
+            log_level="debug"
+        )
+    else:
+        # Production settings
+        uvicorn.run(
+            "app.main:app", 
+            host="0.0.0.0", 
+            port=port,
+            reload=False,
+            log_level="info",
+            proxy_headers=True,
+            forwarded_allow_ips="*"
+        )

@@ -1,27 +1,45 @@
 """
-Gunicorn configuration file for a simple WSGI application
+Gunicorn configuration file for FastAPI production deployment
 """
 import multiprocessing
+import os
 
 # Socket Path
 bind = "0.0.0.0:5000"
 
-# Worker Options - use a single worker for Replit
-workers = 1
-worker_class = "sync"  # Use standard sync worker instead of UvicornWorker
+# Worker Options 
+workers = 1  # Single worker for Replit
+worker_class = "uvicorn.workers.UvicornWorker"  # Use Uvicorn worker for FastAPI
+
+# Process naming
+proc_name = "onetask-api"
+pythonpath = "."
 
 # Timeout configurations
-timeout = 120
+timeout = 180  # Extended timeout for AI operations
 keepalive = 5
 
 # Logging Options
 loglevel = "info"
 accesslog = "-"
 errorlog = "-"
+capture_output = True
+logger_class = "gunicorn.glogging.Logger"
 
-# Reload code when changed
-reload = True
-reload_extra_files = ["./app"]
+# Running environment
+raw_env = [
+    f"ENVIRONMENT={os.environ.get('ENVIRONMENT', 'production')}",
+]
 
-# Specify the WSGI app path
-wsgi_app = "wsgi_app:application"
+# Security settings
+limit_request_line = 4094
+limit_request_fields = 100
+limit_request_field_size = 8190
+
+# Production stability
+graceful_timeout = 60
+max_requests = 1000
+max_requests_jitter = 50
+
+# WSGI app
+wsgi_app = "wsgi:application"
