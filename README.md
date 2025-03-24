@@ -27,7 +27,7 @@ One Task is an AI-powered to-do application designed to support neurodivergent u
 ### Development Setup
 
 1. Clone the repository
-2. Install dependencies: `pip install -r requirements.txt`
+2. Install dependencies: `pip install .` (using pyproject.toml)
 3. Set up environment variables (see `.env.example`)
 4. Run the development server: `./run_dev_server.sh`
 

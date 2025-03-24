@@ -103,8 +103,9 @@ OneTask includes the following key features:
 1. Clone the repository
 2. Install dependencies:
    ```
-   pip install -r requirements.txt
+   pip install .
    ```
+   This installs all dependencies defined in pyproject.toml.
 3. Set environment variables (see `.env.example`)
 4. Run migrations:
    ```
