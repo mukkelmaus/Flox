@@ -30,8 +30,8 @@ class SubscriptionPlan(SubscriptionPlanBase):
     is_active: bool
     is_public: bool
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True
 
 
 class SubscriptionBase(BaseModel):
@@ -60,5 +60,5 @@ class Subscription(SubscriptionBase):
     billing_details: Optional[Dict[str, Any]] = None
     additional_data: Optional[Dict[str, Any]] = None
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True

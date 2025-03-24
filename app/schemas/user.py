@@ -71,8 +71,8 @@ class UserInDB(UserBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True
 
 
 # Additional properties to return via API
@@ -81,5 +81,5 @@ class User(UserBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True

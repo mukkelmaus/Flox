@@ -8,93 +8,104 @@ This script tests the complete authentication flow:
 3. Using the token to access a protected endpoint
 """
 
-import sys
-import os
-import json
 import requests
+import json
+import sys
 
-# API URL - adjust as needed
-API_URL = "http://localhost:5000/api/v1"
-
-# Test user data
-TEST_USER = {
-    "email": "testauth@example.com",
-    "username": "testauth",
-    "password": "TestPassword123",
-    "full_name": "Auth Test User"
-}
-
+# API base URL - change if needed
+API_BASE_URL = "http://localhost:5000"
 
 def create_user():
     """Create a test user."""
     print("Creating test user...")
-    response = requests.post(f"{API_URL}/users/", json=TEST_USER)
-    if response.status_code == 200:
-        print("✓ User created successfully")
-        return True
-    elif response.status_code == 400 and "already exists" in response.text:
-        print("✓ User already exists (continuing)")
-        return True
-    else:
-        print(f"✗ Failed to create user: {response.status_code}")
-        print(response.text)
-        return False
-
+    url = f"{API_BASE_URL}/api/v1/users/"
+    
+    data = {
+        "email": "test@example.com",
+        "username": "testuser",
+        "password": "testpassword123",
+        "full_name": "Test User"
+    }
+    
+    try:
+        response = requests.post(url, json=data)
+        response.raise_for_status()
+        print("User created successfully!")
+        return response.json()
+    except requests.exceptions.HTTPError as e:
+        if response.status_code == 400 and "already exists" in response.text:
+            print("User already exists, continuing with login...")
+            return {"username": data["username"]}
+        print(f"Error creating user: {e}")
+        print(f"Response: {response.text}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error creating user: {e}")
+        sys.exit(1)
 
 def get_token():
     """Get an access token for the test user."""
-    print("\nGetting access token...")
-    response = requests.post(
-        f"{API_URL}/login/access-token",
-        data={
-            "username": TEST_USER["email"],
-            "password": TEST_USER["password"]
-        }
-    )
-    if response.status_code == 200:
-        token = response.json().get("access_token")
-        print("✓ Token obtained successfully")
-        return token
-    else:
-        print(f"✗ Failed to get token: {response.status_code}")
-        print(response.text)
-        return None
-
+    print("Getting access token...")
+    url = f"{API_BASE_URL}/api/v1/login/access-token"
+    
+    data = {
+        "username": "test@example.com",  # Can use email or username
+        "password": "testpassword123"
+    }
+    
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    
+    try:
+        response = requests.post(url, data=data, headers=headers)
+        response.raise_for_status()
+        token_data = response.json()
+        print("Token obtained successfully!")
+        return token_data["access_token"]
+    except Exception as e:
+        print(f"Error getting token: {e}")
+        print(f"Response: {response.text if 'response' in locals() else 'No response'}")
+        sys.exit(1)
 
 def test_protected_endpoint(token):
     """Test accessing a protected endpoint with the token."""
-    print("\nTesting protected endpoint...")
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(f"{API_URL}/users/me", headers=headers)
-    if response.status_code == 200:
-        user = response.json()
-        print("✓ Successfully accessed protected endpoint")
-        print(f"User data: {json.dumps(user, indent=2)}")
-        return True
-    else:
-        print(f"✗ Failed to access protected endpoint: {response.status_code}")
-        print(response.text)
-        return False
-
+    print("Testing protected endpoint (getting current user)...")
+    url = f"{API_BASE_URL}/api/v1/users/me"
+    
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        user_data = response.json()
+        print("Successfully accessed protected endpoint!")
+        print(f"Current user: {json.dumps(user_data, indent=2)}")
+        return user_data
+    except Exception as e:
+        print(f"Error accessing protected endpoint: {e}")
+        print(f"Response: {response.text if 'response' in locals() else 'No response'}")
+        sys.exit(1)
 
 def main():
     """Run the authentication test."""
-    print("=== OneTask API Authentication Test ===\n")
+    print("=== OneTask API Authentication Test ===")
     
-    if not create_user():
-        return False
+    # Step 1: Create a user
+    user = create_user()
     
+    # Step 2: Get access token
     token = get_token()
-    if not token:
-        return False
     
-    if not test_protected_endpoint(token):
-        return False
+    # Step 3: Test accessing a protected endpoint
+    user_data = test_protected_endpoint(token)
     
-    print("\n✓ Authentication test completed successfully!")
-    return True
-
-
+    print("\n=== Authentication Test Successful! ===")
+    print(f"Authenticated as: {user_data.get('username', 'Unknown')}")
+    print(f"User ID: {user_data.get('id', 'Unknown')}")
+    print(f"Email: {user_data.get('email', 'Unknown')}")
+    
 if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)
+    main()

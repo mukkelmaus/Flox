@@ -26,8 +26,8 @@ class SubTask(SubTaskBase):
     created_at: datetime
     completed_at: Optional[datetime] = None
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True
 
 
 # TaskTag schema
@@ -53,8 +53,8 @@ class TaskTag(TaskTagBase):
     workspace_id: Optional[int] = None
     is_system: bool
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True
 
 
 # Task schema
@@ -143,8 +143,8 @@ class Task(TaskBase):
     actual_minutes: Optional[int] = None
     tags: List[TaskTag] = []
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True
 
 
 class TaskWithSubtasks(Task):

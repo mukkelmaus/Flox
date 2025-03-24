@@ -70,5 +70,5 @@ class SupportTicket(SupportTicketBase):
     updated_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True

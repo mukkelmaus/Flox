@@ -40,8 +40,8 @@ class Integration(IntegrationBase):
     updated_at: Optional[datetime] = None
     last_sync: Optional[datetime] = None
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True
 
 
 class IntegrationSync(BaseModel):

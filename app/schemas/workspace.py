@@ -37,8 +37,8 @@ class WorkspaceMember(WorkspaceMemberBase):
     last_active_at: Optional[datetime] = None
     permissions: Optional[Dict[str, Any]] = None
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True
 
 
 class WorkspaceMemberResponse(BaseModel):
@@ -75,8 +75,8 @@ class Workspace(WorkspaceBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True
 
 
 class WorkspaceWithMembers(Workspace):

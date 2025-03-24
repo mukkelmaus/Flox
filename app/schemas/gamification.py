@@ -19,8 +19,8 @@ class UserStats(UserStatsBase):
     user_id: int
     last_updated: Optional[datetime] = None
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True
 
 
 class UserAchievementBase(BaseModel):
@@ -34,8 +34,8 @@ class UserAchievement(UserAchievementBase):
     user_id: int
     unlocked_at: datetime
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True
 
 
 class AchievementBase(BaseModel):
@@ -54,8 +54,8 @@ class Achievement(AchievementBase):
     id: int
     created_at: datetime
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True
 
 
 class UserStreakBase(BaseModel):
@@ -70,8 +70,8 @@ class UserStreak(UserStreakBase):
     user_id: int
     updated_at: Optional[datetime] = None
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True
 
 
 class LeaderboardEntry(BaseModel):

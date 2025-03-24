@@ -34,8 +34,8 @@ class Notification(NotificationBase):
     created_at: datetime
     read_at: Optional[datetime] = None
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True
 
 
 class NotificationSettingsBase(BaseModel):
@@ -66,5 +66,5 @@ class NotificationSettings(NotificationSettingsBase):
     id: int
     user_id: int
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True

@@ -47,5 +47,5 @@ class Theme(ThemeBase):
     user_id: Optional[int] = None
     is_system: bool
     
-    class Config:
-        orm_mode = True
+    class Config:  # Updated for Pydantic V2
+        from_attributes = True
