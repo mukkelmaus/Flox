@@ -3,418 +3,501 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OneTask WebSocket Test</title>
+    <title>OneTask WebSocket Test Client</title>
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <style>
         body {
             padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
-        .message-container {
+        
+        .log-container {
             height: 400px;
             overflow-y: auto;
-            border: 1px solid var(--bs-border-color);
-            border-radius: 5px;
-            padding: 10px;
             margin-bottom: 20px;
-            background-color: var(--bs-body-bg);
-        }
-        .message {
             padding: 10px;
-            margin-bottom: 10px;
             border-radius: 5px;
             background-color: var(--bs-dark);
-            border-left: 3px solid var(--bs-info);
-        }
-        .message-type {
-            font-weight: bold;
-            color: var(--bs-info);
-            margin-bottom: 5px;
-        }
-        .message-content {
-            font-family: monospace;
-            white-space: pre-wrap;
             color: var(--bs-light);
         }
-        .control-panel {
-            margin-bottom: 20px;
+        
+        .notification {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .notification.task {
+            background-color: rgba(var(--bs-primary-rgb), 0.2);
+            border-left: 4px solid var(--bs-primary);
+        }
+        
+        .notification.achievement {
+            background-color: rgba(var(--bs-warning-rgb), 0.2);
+            border-left: 4px solid var(--bs-warning);
+        }
+        
+        .notification.streak {
+            background-color: rgba(var(--bs-success-rgb), 0.2);
+            border-left: 4px solid var(--bs-success);
+        }
+        
+        .notification.level-up {
+            background-color: rgba(var(--bs-info-rgb), 0.2);
+            border-left: 4px solid var(--bs-info);
+        }
+        
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .notification-title {
+            font-weight: bold;
+        }
+        
+        .notification-timestamp {
+            font-size: 0.8em;
+            color: var(--bs-secondary);
+        }
+        
+        .notification-content {
+            margin-bottom: 5px;
+        }
+        
+        .notification-data {
+            font-size: 0.9em;
+            color: var(--bs-secondary);
         }
     </style>
 </head>
-<body>
+<body data-bs-theme="dark">
     <div class="container">
-        <h1 class="mb-4">OneTask WebSocket Test</h1>
+        <h1 class="mb-4">OneTask WebSocket Test Client</h1>
         
-        <div class="row">
+        <div class="row mb-4">
             <div class="col-md-6">
-                <div class="card mb-4">
-                    <div class="card-header">Connection Settings</div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="tokenInput" class="form-label">JWT Token</label>
-                            <input type="text" class="form-control" id="tokenInput" placeholder="Enter your JWT token">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">WebSocket Type</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="websocketType" id="notificationsType" value="notifications" checked>
-                                <label class="form-check-label" for="notificationsType">
-                                    Notifications
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="websocketType" id="tasksType" value="tasks">
-                                <label class="form-check-label" for="tasksType">
-                                    Tasks
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="websocketType" id="focusType" value="focus">
-                                <label class="form-check-label" for="focusType">
-                                    Focus Session
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3" id="workspaceIdContainer" style="display: none;">
-                            <label for="workspaceIdInput" class="form-label">Workspace ID</label>
-                            <input type="number" class="form-control" id="workspaceIdInput" placeholder="Enter workspace ID">
-                        </div>
-                        
-                        <div class="mb-3" id="sessionIdContainer" style="display: none;">
-                            <label for="sessionIdInput" class="form-label">Session ID</label>
-                            <input type="text" class="form-control" id="sessionIdInput" placeholder="Enter session ID">
-                        </div>
-                        
-                        <div class="d-grid gap-2">
-                            <button id="connectBtn" class="btn btn-primary">Connect</button>
-                            <button id="disconnectBtn" class="btn btn-danger" disabled>Disconnect</button>
-                        </div>
-                    </div>
-                </div>
-                
                 <div class="card">
-                    <div class="card-header">Connection Status</div>
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Connection Settings</h5>
+                    </div>
                     <div class="card-body">
                         <div class="mb-3">
-                            <label class="form-label">Status</label>
-                            <div id="connectionStatus" class="alert alert-secondary">Disconnected</div>
+                            <label for="server-url" class="form-label">Server URL</label>
+                            <input type="text" class="form-control" id="server-url" value="ws://localhost:8000">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Connection URL</label>
-                            <div id="connectionUrl" class="alert alert-secondary">Not connected</div>
+                            <label for="jwt-token" class="form-label">JWT Token</label>
+                            <input type="text" class="form-control" id="jwt-token" placeholder="Your JWT token">
+                        </div>
+                        <div class="mb-3">
+                            <label for="endpoint-type" class="form-label">Endpoint Type</label>
+                            <select class="form-select" id="endpoint-type">
+                                <option value="notifications">Notifications</option>
+                                <option value="tasks">Tasks (Workspace)</option>
+                                <option value="focus">Focus Session</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="workspace-id-container" style="display: none;">
+                            <label for="workspace-id" class="form-label">Workspace ID</label>
+                            <input type="number" class="form-control" id="workspace-id" placeholder="Workspace ID">
+                        </div>
+                        <div class="mb-3" id="session-id-container" style="display: none;">
+                            <label for="session-id" class="form-label">Session ID</label>
+                            <input type="text" class="form-control" id="session-id" placeholder="Focus Session ID">
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" id="connect-btn">Connect</button>
+                            <button class="btn btn-danger" id="disconnect-btn" disabled>Disconnect</button>
                         </div>
                     </div>
                 </div>
             </div>
-            
             <div class="col-md-6">
-                <div class="card mb-4">
-                    <div class="card-header">Messages</div>
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Connection Status</h5>
+                    </div>
                     <div class="card-body">
-                        <div class="message-container" id="messageContainer">
-                            <div class="alert alert-info">
-                                Connect to a WebSocket to see messages here.
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="me-2">Status:</div>
+                                <div id="connection-status" class="badge bg-secondary">Disconnected</div>
                             </div>
                         </div>
-                        <div class="d-grid">
-                            <button id="clearBtn" class="btn btn-secondary">Clear Messages</button>
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="me-2">Connected URL:</div>
+                                <div id="connected-url" class="text-truncate">-</div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="me-2">Connection Time:</div>
+                                <div id="connection-time">-</div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="me-2">Messages Received:</div>
+                                <div id="messages-count">0</div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <div>Last Message:</div>
+                                <div id="last-message-time">-</div>
+                            </div>
+                            <div id="last-message" class="text-truncate">-</div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Workspace-specific Broadcasts Test Section -->
-                <div class="card" id="workspaceBroadcastCard" style="display: none;">
-                    <div class="card-header">Test Workspace Broadcasts</div>
-                    <div class="card-body">
-                        <p class="card-text">
-                            Test the workspace broadcast feature by simulating task actions in another window.
-                            Connect to the same workspace in multiple browser windows to see real-time updates.
-                        </p>
-                        
-                        <div class="mb-3">
-                            <label for="testTaskId" class="form-label">Task ID</label>
-                            <input type="number" class="form-control" id="testTaskId" placeholder="Enter task ID">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="testTaskTitle" class="form-label">Task Title</label>
-                            <input type="text" class="form-control" id="testTaskTitle" placeholder="Enter task title">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="testActorId" class="form-label">Actor ID (optional)</label>
-                            <input type="number" class="form-control" id="testActorId" placeholder="Enter actor ID">
-                        </div>
-                        
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Message Log</h5>
+                <button class="btn btn-sm btn-outline-danger" id="clear-log-btn">Clear Log</button>
+            </div>
+            <div class="card-body p-0">
+                <div class="log-container" id="message-log"></div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Generate Test Events</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    These buttons will call API endpoints to trigger events that will generate WebSocket notifications.
+                    You need to be connected to see the results.
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
                         <div class="d-grid gap-2">
-                            <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-outline-primary test-action-btn" data-action="created">Created</button>
-                                <button type="button" class="btn btn-outline-info test-action-btn" data-action="updated">Updated</button>
-                                <button type="button" class="btn btn-outline-success test-action-btn" data-action="completed">Completed</button>
-                                <button type="button" class="btn btn-outline-danger test-action-btn" data-action="deleted">Deleted</button>
-                            </div>
+                            <button class="btn btn-success" id="update-streak-btn">Update Streak</button>
+                            <button class="btn btn-warning" id="complete-task-btn">Complete Random Task</button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-info" id="check-achievements-btn">Check Achievements</button>
+                            <button class="btn btn-primary" id="award-points-btn">Award Points</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
+    
     <script>
-        // DOM Elements
-        const tokenInput = document.getElementById('tokenInput');
-        const websocketTypeRadios = document.getElementsByName('websocketType');
-        const workspaceIdContainer = document.getElementById('workspaceIdContainer');
-        const workspaceIdInput = document.getElementById('workspaceIdInput');
-        const sessionIdContainer = document.getElementById('sessionIdContainer');
-        const sessionIdInput = document.getElementById('sessionIdInput');
-        const connectBtn = document.getElementById('connectBtn');
-        const disconnectBtn = document.getElementById('disconnectBtn');
-        const connectionStatus = document.getElementById('connectionStatus');
-        const connectionUrl = document.getElementById('connectionUrl');
-        const messageContainer = document.getElementById('messageContainer');
-        const clearBtn = document.getElementById('clearBtn');
-        const workspaceBroadcastCard = document.getElementById('workspaceBroadcastCard');
-        const testTaskId = document.getElementById('testTaskId');
-        const testTaskTitle = document.getElementById('testTaskTitle');
-        const testActorId = document.getElementById('testActorId');
-        const testActionBtns = document.querySelectorAll('.test-action-btn');
-        
-        // WebSocket connection
+        // Global variables
         let socket = null;
+        let connectTime = null;
+        let messageCount = 0;
         
-        // Show/hide additional fields based on WebSocket type
-        websocketTypeRadios.forEach(radio => {
-            radio.addEventListener('change', () => {
-                const isTasks = radio.value === 'tasks';
-                workspaceIdContainer.style.display = isTasks ? 'block' : 'none';
-                sessionIdContainer.style.display = radio.value === 'focus' ? 'block' : 'none';
-                
-                // Show/hide workspace broadcast test card
-                workspaceBroadcastCard.style.display = isTasks ? 'block' : 'none';
+        // DOM elements
+        const serverUrlInput = document.getElementById('server-url');
+        const jwtTokenInput = document.getElementById('jwt-token');
+        const endpointTypeSelect = document.getElementById('endpoint-type');
+        const workspaceIdContainer = document.getElementById('workspace-id-container');
+        const workspaceIdInput = document.getElementById('workspace-id');
+        const sessionIdContainer = document.getElementById('session-id-container');
+        const sessionIdInput = document.getElementById('session-id');
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const connectionStatus = document.getElementById('connection-status');
+        const connectedUrl = document.getElementById('connected-url');
+        const connectionTime = document.getElementById('connection-time');
+        const messagesCount = document.getElementById('messages-count');
+        const lastMessageTime = document.getElementById('last-message-time');
+        const lastMessage = document.getElementById('last-message');
+        const messageLog = document.getElementById('message-log');
+        const clearLogBtn = document.getElementById('clear-log-btn');
+        
+        // Test event buttons
+        const updateStreakBtn = document.getElementById('update-streak-btn');
+        const completeTaskBtn = document.getElementById('complete-task-btn');
+        const checkAchievementsBtn = document.getElementById('check-achievements-btn');
+        const awardPointsBtn = document.getElementById('award-points-btn');
+        
+        // Show/hide additional inputs based on endpoint type
+        endpointTypeSelect.addEventListener('change', () => {
+            const selectedType = endpointTypeSelect.value;
+            workspaceIdContainer.style.display = selectedType === 'tasks' ? 'block' : 'none';
+            sessionIdContainer.style.display = selectedType === 'focus' ? 'block' : 'none';
+        });
+        
+        // Connect button click handler
+        connectBtn.addEventListener('click', () => {
+            connect();
+        });
+        
+        // Disconnect button click handler
+        disconnectBtn.addEventListener('click', () => {
+            disconnect();
+        });
+        
+        // Clear log button click handler
+        clearLogBtn.addEventListener('click', () => {
+            messageLog.innerHTML = '';
+        });
+        
+        // Test event buttons click handlers
+        updateStreakBtn.addEventListener('click', () => {
+            callApi('/api/v1/gamification/streak/update', 'POST');
+        });
+        
+        completeTaskBtn.addEventListener('click', () => {
+            // Simplified - in a real app, you'd complete a specific task
+            callApi('/api/v1/tasks/random/complete', 'POST');
+        });
+        
+        checkAchievementsBtn.addEventListener('click', () => {
+            callApi('/api/v1/gamification/achievements/check', 'POST');
+        });
+        
+        awardPointsBtn.addEventListener('click', () => {
+            callApi('/api/v1/gamification/points/award', 'POST', {
+                points: 50,
+                reason: 'Test points award'
             });
         });
         
         // Connect to WebSocket
-        connectBtn.addEventListener('click', () => {
+        function connect() {
             if (socket) {
-                addMessage('system', 'Already connected. Please disconnect first.');
+                disconnect();
+            }
+            
+            const serverUrl = serverUrlInput.value.trim();
+            const jwtToken = jwtTokenInput.value.trim();
+            const endpointType = endpointTypeSelect.value;
+            
+            if (!serverUrl) {
+                alert('Please enter a server URL');
                 return;
             }
             
-            const token = tokenInput.value.trim();
-            if (!token) {
-                addMessage('system', 'Please enter a JWT token.');
+            if (!jwtToken) {
+                alert('Please enter a JWT token');
                 return;
             }
-            
-            let websocketType = 'notifications';
-            websocketTypeRadios.forEach(radio => {
-                if (radio.checked) {
-                    websocketType = radio.value;
-                }
-            });
             
             let url = '';
-            switch (websocketType) {
+            
+            switch (endpointType) {
                 case 'notifications':
-                    url = `/api/v1/ws/notifications?token=${token}`;
+                    url = `${serverUrl}/ws/notifications?token=${jwtToken}`;
                     break;
                 case 'tasks':
                     const workspaceId = workspaceIdInput.value.trim();
                     if (!workspaceId) {
-                        addMessage('system', 'Please enter a workspace ID.');
+                        alert('Please enter a workspace ID');
                         return;
                     }
-                    url = `/api/v1/ws/workspaces/${workspaceId}/tasks?token=${token}`;
+                    url = `${serverUrl}/ws/tasks/${workspaceId}?token=${jwtToken}`;
                     break;
                 case 'focus':
                     const sessionId = sessionIdInput.value.trim();
                     if (!sessionId) {
-                        addMessage('system', 'Please enter a session ID.');
+                        alert('Please enter a session ID');
                         return;
                     }
-                    url = `/api/v1/ws/focus-sessions/${sessionId}?token=${token}`;
+                    url = `${serverUrl}/ws/focus/${sessionId}?token=${jwtToken}`;
                     break;
             }
             
-            // Determine WebSocket URL (use secure WebSocket if the page is loaded over HTTPS)
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}${url}`;
-            
             try {
-                socket = new WebSocket(wsUrl);
+                socket = new WebSocket(url);
                 
-                socket.onopen = (event) => {
-                    connectionStatus.textContent = 'Connected';
-                    connectionStatus.className = 'alert alert-success';
-                    connectionUrl.textContent = wsUrl;
+                socket.onopen = () => {
+                    connectTime = new Date();
+                    updateConnectionStatus('Connected', 'success');
+                    connectedUrl.textContent = url;
+                    updateConnectionTime();
+                    setInterval(updateConnectionTime, 1000);
+                    
                     connectBtn.disabled = true;
                     disconnectBtn.disabled = false;
-                    addMessage('system', 'Connected to WebSocket');
+                    
+                    logMessage('Connection established', 'system');
                 };
                 
                 socket.onmessage = (event) => {
+                    messageCount++;
+                    messagesCount.textContent = messageCount;
+                    
+                    const now = new Date();
+                    lastMessageTime.textContent = formatTime(now);
+                    
                     try {
                         const data = JSON.parse(event.data);
-                        addMessage('received', JSON.stringify(data, null, 2));
+                        lastMessage.textContent = JSON.stringify(data);
+                        
+                        // Log the message with appropriate formatting based on type
+                        logNotification(data);
                     } catch (error) {
-                        addMessage('received', event.data);
+                        lastMessage.textContent = event.data;
+                        logMessage(`Raw message: ${event.data}`, 'error');
                     }
+                };
+                
+                socket.onclose = () => {
+                    updateConnectionStatus('Disconnected', 'secondary');
+                    connectedUrl.textContent = '-';
+                    connectionTime.textContent = '-';
+                    
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    
+                    socket = null;
+                    
+                    logMessage('Connection closed', 'system');
                 };
                 
                 socket.onerror = (error) => {
-                    connectionStatus.textContent = 'Error';
-                    connectionStatus.className = 'alert alert-danger';
-                    addMessage('error', 'WebSocket error occurred');
-                    console.error('WebSocket error:', error);
-                };
-                
-                socket.onclose = (event) => {
-                    connectionStatus.textContent = 'Disconnected';
-                    connectionStatus.className = 'alert alert-secondary';
-                    connectBtn.disabled = false;
-                    disconnectBtn.disabled = true;
-                    socket = null;
+                    updateConnectionStatus('Error', 'danger');
                     
-                    if (event.wasClean) {
-                        addMessage('system', `Disconnected cleanly, code=${event.code}, reason=${event.reason}`);
-                    } else {
-                        addMessage('error', 'Connection died');
-                    }
+                    logMessage(`WebSocket error: ${error}`, 'error');
                 };
             } catch (error) {
-                addMessage('error', `Failed to connect: ${error.message}`);
+                alert(`Error connecting to WebSocket: ${error.message}`);
             }
-        });
+        }
         
         // Disconnect from WebSocket
-        disconnectBtn.addEventListener('click', () => {
+        function disconnect() {
             if (socket) {
                 socket.close();
-                socket = null;
-                connectionStatus.textContent = 'Disconnected';
-                connectionStatus.className = 'alert alert-secondary';
-                connectionUrl.textContent = 'Not connected';
-                connectBtn.disabled = false;
-                disconnectBtn.disabled = true;
-                addMessage('system', 'Disconnected from WebSocket');
             }
-        });
+        }
         
-        // Clear messages
-        clearBtn.addEventListener('click', () => {
-            messageContainer.innerHTML = '';
-        });
+        // Update connection status
+        function updateConnectionStatus(status, badgeClass) {
+            connectionStatus.textContent = status;
+            connectionStatus.className = `badge bg-${badgeClass}`;
+        }
         
-        // Set up test action buttons for workspace broadcasts
-        testActionBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                // Check if connected to task WebSocket
-                if (!socket || workspaceBroadcastCard.style.display === 'none') {
-                    addMessage('error', 'You must be connected to a workspace tasks WebSocket to test broadcasts.');
-                    return;
+        // Update connection time
+        function updateConnectionTime() {
+            if (connectTime) {
+                const now = new Date();
+                const diff = Math.floor((now - connectTime) / 1000);
+                
+                const hours = Math.floor(diff / 3600);
+                const minutes = Math.floor((diff % 3600) / 60);
+                const seconds = diff % 60;
+                
+                connectionTime.textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+        
+        // Format time for display
+        function formatTime(date) {
+            return date.toLocaleTimeString();
+        }
+        
+        // Log a system message
+        function logMessage(message, type) {
+            const element = document.createElement('div');
+            element.className = `notification ${type}`;
+            
+            const now = new Date();
+            
+            element.innerHTML = `
+                <div class="notification-header">
+                    <span class="notification-title">${type.toUpperCase()}</span>
+                    <span class="notification-timestamp">${formatTime(now)}</span>
+                </div>
+                <div class="notification-content">${message}</div>
+            `;
+            
+            messageLog.appendChild(element);
+            messageLog.scrollTop = messageLog.scrollHeight;
+        }
+        
+        // Log a notification message with formatting based on type
+        function logNotification(data) {
+            let type = 'task';
+            if (data.type === 'achievement_unlocked' || data.type === 'achievement_progress') {
+                type = 'achievement';
+            } else if (data.type === 'streak_update') {
+                type = 'streak';
+            } else if (data.type === 'level_up') {
+                type = 'level-up';
+            }
+            
+            const element = document.createElement('div');
+            element.className = `notification ${type}`;
+            
+            const timestamp = data.created_at 
+                ? new Date(data.created_at) 
+                : new Date();
+            
+            element.innerHTML = `
+                <div class="notification-header">
+                    <span class="notification-title">${data.title || data.type}</span>
+                    <span class="notification-timestamp">${formatTime(timestamp)}</span>
+                </div>
+                <div class="notification-content">${data.content || ''}</div>
+                <div class="notification-data">${JSON.stringify(data.data || {})}</div>
+            `;
+            
+            messageLog.appendChild(element);
+            messageLog.scrollTop = messageLog.scrollHeight;
+        }
+        
+        // Call an API endpoint to trigger events
+        async function callApi(url, method, data = null) {
+            if (!jwtTokenInput.value) {
+                alert('Please enter a JWT token');
+                return;
+            }
+            
+            try {
+                // Get the base URL from the WebSocket URL (but switch to http/https)
+                let baseUrl = serverUrlInput.value.trim();
+                if (baseUrl.startsWith('ws://')) {
+                    baseUrl = baseUrl.replace('ws://', 'http://');
+                } else if (baseUrl.startsWith('wss://')) {
+                    baseUrl = baseUrl.replace('wss://', 'https://');
                 }
                 
-                const taskId = testTaskId.value.trim();
-                const taskTitle = testTaskTitle.value.trim();
+                const fullUrl = `${baseUrl}${url}`;
                 
-                if (!taskId || !taskTitle) {
-                    addMessage('error', 'Please enter both task ID and task title for testing.');
-                    return;
-                }
-                
-                const action = btn.getAttribute('data-action');
-                const workspaceId = workspaceIdInput.value.trim();
-                const actorId = testActorId.value.trim() || Math.floor(Math.random() * 1000);
-                
-                // Create test message in the correct format
-                const testMessage = {
-                    type: "task_update",
-                    action: action,
-                    task_id: parseInt(taskId),
-                    task_title: taskTitle,
-                    workspace_id: parseInt(workspaceId),
-                    timestamp: new Date().toISOString(),
-                    actor_id: parseInt(actorId)
+                const options = {
+                    method,
+                    headers: {
+                        'Authorization': `Bearer ${jwtTokenInput.value}`,
+                        'Content-Type': 'application/json'
+                    }
                 };
                 
-                // Display the test message
-                addMessage('sent', JSON.stringify(testMessage, null, 2));
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
                 
-                // In a real scenario, this would be sent through an API
-                // For testing, we can pretend that this was received from another client
-                // sendToAPI(`/api/v1/test/broadcast`, testMessage);
+                logMessage(`Calling API: ${method} ${url}`, 'system');
                 
-                // For demo purposes, you can paste this URL in another browser window to see the broadcast:
-                const demoUrl = `${window.location.origin}${window.location.pathname}?task_id=${taskId}&task_title=${encodeURIComponent(taskTitle)}&workspace_id=${workspaceId}`;
-                addMessage('system', `Demo URL to test in another window: ${demoUrl}`);
-            });
-        });
-        
-        // Add message to container
-        function addMessage(type, content) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message';
-            
-            const typeDiv = document.createElement('div');
-            typeDiv.className = 'message-type';
-            
-            switch (type) {
-                case 'system':
-                    typeDiv.textContent = '🔧 SYSTEM';
-                    break;
-                case 'received':
-                    typeDiv.textContent = '📥 RECEIVED';
-                    break;
-                case 'sent':
-                    typeDiv.textContent = '📤 SENT';
-                    messageDiv.style.borderColor = 'var(--bs-primary)';
-                    break;
-                case 'error':
-                    typeDiv.textContent = '❌ ERROR';
-                    messageDiv.style.borderColor = 'var(--bs-danger)';
-                    break;
-                default:
-                    typeDiv.textContent = type.toUpperCase();
-            }
-            
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-            contentDiv.textContent = content;
-            
-            messageDiv.appendChild(typeDiv);
-            messageDiv.appendChild(contentDiv);
-            
-            messageContainer.appendChild(messageDiv);
-            messageContainer.scrollTop = messageContainer.scrollHeight;
-        }
-        
-        // Check URL parameters for demo mode
-        function checkUrlParams() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const taskId = urlParams.get('task_id');
-            const taskTitle = urlParams.get('task_title');
-            const workspaceId = urlParams.get('workspace_id');
-            
-            if (taskId && taskTitle && workspaceId) {
-                // Pre-fill the test inputs
-                testTaskId.value = taskId;
-                testTaskTitle.value = taskTitle;
-                workspaceIdInput.value = workspaceId;
+                const response = await fetch(fullUrl, options);
                 
-                // Select the tasks WebSocket type
-                document.getElementById('tasksType').checked = true;
-                workspaceIdContainer.style.display = 'block';
-                workspaceBroadcastCard.style.display = 'block';
-                
-                addMessage('system', 'Demo mode: Values pre-filled from URL parameters');
+                if (response.ok) {
+                    const result = await response.json();
+                    logMessage(`API call successful: ${JSON.stringify(result)}`, 'system');
+                } else {
+                    const error = await response.text();
+                    logMessage(`API call failed: ${error}`, 'error');
+                }
+            } catch (error) {
+                logMessage(`API call error: ${error.message}`, 'error');
             }
         }
-        
-        // Initialize
-        checkUrlParams();
     </script>
 </body>
 </html>

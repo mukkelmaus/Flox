@@ -441,7 +441,7 @@ def get_leaderboard(
     return leaderboard
 
 
-def award_points(db: Session, user_id: int, points: int, reason: str) -> Dict[str, Any]:
+async def award_points(db: Session, user_id: int, points: int, reason: str) -> Dict[str, Any]:
     """
     Award points to a user.
     
@@ -454,8 +454,15 @@ def award_points(db: Session, user_id: int, points: int, reason: str) -> Dict[st
     Returns:
         Updated user stats
     """
+    # Import here to avoid circular imports
+    from app.websockets.notification_handlers import (
+        send_level_up_notification,
+        send_system_notification
+    )
+    
     # Get user stats
     stats = get_user_stats(db, user_id)
+    old_level = stats.level
     
     # Award points
     stats.points += points
@@ -469,12 +476,33 @@ def award_points(db: Session, user_id: int, points: int, reason: str) -> Dict[st
             new_level = i + 1
     
     # Check for level up
-    level_up = new_level > stats.level
+    level_up = new_level > old_level
     stats.level = new_level
     
     db.add(stats)
     db.commit()
     db.refresh(stats)
+    
+    # Send notifications
+    if level_up:
+        # Send level up notification
+        await send_level_up_notification(db, user_id, new_level)
+    
+    # Always send a points awarded notification
+    await send_system_notification(
+        db, 
+        user_id, 
+        "Points Awarded", 
+        f"You earned {points} points for: {reason}",
+        data={
+            "points": points,
+            "reason": reason,
+            "total_points": stats.points
+        }
+    )
+    
+    # Check for new achievements after points award
+    await check_achievements(db, user_id)
     
     return {
         "success": True,

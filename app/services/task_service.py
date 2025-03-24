@@ -522,6 +522,9 @@ async def mark_task_completed(
     Returns:
         Updated task
     """
+    # Import here to avoid circular imports
+    from app.services.gamification_service import update_streak, award_points, check_achievements
+    
     task.status = "done"
     task.completed_at = datetime.now()
     
@@ -541,56 +544,20 @@ async def mark_task_completed(
     user_stats.tasks_completed += 1
     
     # Check if completed on time
+    completed_on_time = False
     if task.due_date and task.completed_at <= task.due_date:
         user_stats.tasks_completed_on_time += 1
+        completed_on_time = True
     
-    # Update streak
-    user_streak = db.query(UserStreak).filter(
-        UserStreak.user_id == task.user_id
-    ).first()
-    
-    if not user_streak:
-        user_streak = UserStreak(
-            user_id=task.user_id,
-            current_streak=1,
-            longest_streak=1,
-            last_activity_date=datetime.now(),
-            streak_start_date=datetime.now(),
-        )
-        db.add(user_streak)
-    else:
-        # Check if streak is continued
-        today = datetime.now().date()
-        if user_streak.last_activity_date:
-            last_date = user_streak.last_activity_date.date()
-            days_difference = (today - last_date).days
-            
-            if days_difference == 0:
-                # Already recorded activity today
-                pass
-            elif days_difference == 1:
-                # Streak continues
-                user_streak.current_streak += 1
-                if user_streak.current_streak > user_streak.longest_streak:
-                    user_streak.longest_streak = user_streak.current_streak
-            elif days_difference > 1:
-                # Streak broken
-                user_streak.current_streak = 1
-                user_streak.streak_start_date = datetime.now()
-        
-        user_streak.last_activity_date = datetime.now()
-    
-    # Update user stats streak info
-    user_stats.current_streak = user_streak.current_streak
-    user_stats.longest_streak = user_streak.longest_streak
-    
+    # Save the task, stats updates
     db.add(task)
     db.add(user_stats)
-    db.add(user_streak)
     db.commit()
     db.refresh(task)
     
     # Send real-time notification to the task owner
+    from app.websockets.notification_handlers import send_task_notification, broadcast_task_update
+    
     await send_task_notification(
         db=db,
         user_id=task.user_id,
@@ -611,6 +578,35 @@ async def mark_task_completed(
             actor_id=task.user_id,
             exclude_user_ids=[task.user_id]  # Don't send to the task owner
         )
+    
+    # Award points for completing the task
+    points = 10  # Base points for completing any task
+    
+    # Bonus points for various task attributes
+    if completed_on_time:
+        points += 5  # Bonus for completing on time
+    
+    if task.priority == "high":
+        points += 5  # Bonus for high priority tasks
+    elif task.priority == "urgent":
+        points += 10  # Bonus for urgent tasks
+    
+    if task.complexity and task.complexity > 3:
+        points += 5  # Bonus for complex tasks
+    
+    # Award points and potentially trigger a level-up notification
+    await award_points(
+        db=db,
+        user_id=task.user_id,
+        points=points,
+        reason="Task completed: " + task.title
+    )
+    
+    # Update streak and potentially trigger streak notifications
+    await update_streak(db, task.user_id)
+    
+    # Check for achievement updates
+    await check_achievements(db, task.user_id)
     
     return task
 
