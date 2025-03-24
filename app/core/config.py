@@ -8,8 +8,12 @@ import os
 import secrets
 from typing import Any, Dict, List, Optional, Union
 
+from dotenv import load_dotenv
 from pydantic import AnyHttpUrl, EmailStr, HttpUrl, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class Settings(BaseSettings):
@@ -17,7 +21,7 @@ class Settings(BaseSettings):
     Application settings loaded from environment variables.
     """
     API_V1_STR: str = "/api/v1"
-    SECRET_KEY: str = secrets.token_urlsafe(32)
+    SECRET_KEY: str = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     
@@ -78,6 +82,7 @@ class Settings(BaseSettings):
 
     # OpenAI API configuration
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    ENABLE_AI_FEATURES: bool = os.getenv("ENABLE_AI_FEATURES", "true").lower() == "true"
     
     # Integration configuration
     GOOGLE_CLIENT_ID: Optional[str] = None
@@ -99,7 +104,7 @@ class Settings(BaseSettings):
     
     # Application settings
     PROJECT_NAME: str = "OneTask API"
-    SERVER_HOST: AnyHttpUrl = "http://localhost"
+    SERVER_HOST: str = os.getenv("SERVER_HOST", "http://localhost:5000")
     
     # Deployment settings
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
