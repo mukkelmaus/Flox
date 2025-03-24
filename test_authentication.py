@@ -8,12 +8,13 @@ This script tests the complete authentication flow:
 3. Using the token to access a protected endpoint
 """
 
-import requests
 import json
+import os
 import sys
+import requests
 
-# API base URL - change if needed
-API_BASE_URL = "http://localhost:5000"
+# API base URL - get from environment or use fallback
+API_BASE_URL = os.environ.get("API_URL", "http://localhost:5000")
 
 def create_user():
     """Create a test user."""
@@ -33,11 +34,11 @@ def create_user():
         print("User created successfully!")
         return response.json()
     except requests.exceptions.HTTPError as e:
-        if response.status_code == 400 and "already exists" in response.text:
+        if e.response.status_code == 400 and "already exists" in e.response.text:
             print("User already exists, continuing with login...")
             return {"username": data["username"]}
         print(f"Error creating user: {e}")
-        print(f"Response: {response.text}")
+        print(f"Response: {e.response.text if hasattr(e, 'response') else 'No response'}")
         sys.exit(1)
     except Exception as e:
         print(f"Error creating user: {e}")
@@ -61,11 +62,15 @@ def get_token():
         response = requests.post(url, data=data, headers=headers)
         response.raise_for_status()
         token_data = response.json()
+        print(f"Token response: {json.dumps(token_data, indent=2)}")
         print("Token obtained successfully!")
         return token_data["access_token"]
+    except requests.exceptions.HTTPError as e:
+        print(f"Error getting token: {e}")
+        print(f"Response: {e.response.text if hasattr(e, 'response') else 'No response'}")
+        sys.exit(1)
     except Exception as e:
         print(f"Error getting token: {e}")
-        print(f"Response: {response.text if 'response' in locals() else 'No response'}")
         sys.exit(1)
 
 def test_protected_endpoint(token):
@@ -84,9 +89,12 @@ def test_protected_endpoint(token):
         print("Successfully accessed protected endpoint!")
         print(f"Current user: {json.dumps(user_data, indent=2)}")
         return user_data
+    except requests.exceptions.HTTPError as e:
+        print(f"Error accessing protected endpoint: {e}")
+        print(f"Response: {e.response.text if hasattr(e, 'response') else 'No response'}")
+        sys.exit(1)
     except Exception as e:
         print(f"Error accessing protected endpoint: {e}")
-        print(f"Response: {response.text if 'response' in locals() else 'No response'}")
         sys.exit(1)
 
 def main():
