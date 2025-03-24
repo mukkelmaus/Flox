@@ -20,8 +20,9 @@ This guide provides comprehensive instructions for deploying the OneTask API in 
 
 3. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   pip install .
    ```
+   This installs all dependencies defined in pyproject.toml.
 
 4. **Configure environment variables:**
    ```bash

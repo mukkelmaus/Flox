@@ -68,6 +68,7 @@ By participating in this project, you agree to uphold our Code of Conduct, which
    ```bash
    pip install -e .
    ```
+   This installs the project in development mode with all dependencies from pyproject.toml.
 
 4. Set up environment variables
    ```bash
