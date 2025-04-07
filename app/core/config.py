@@ -12,9 +12,7 @@ from dotenv import load_dotenv
 from pydantic import AnyHttpUrl, EmailStr, HttpUrl, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings
 
-# Load environment variables from .env file
 load_dotenv()
-
 
 class Settings(BaseSettings):
     """
@@ -22,9 +20,8 @@ class Settings(BaseSettings):
     """
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
-    # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
-    
+
     # CORS configuration
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
 
@@ -36,31 +33,19 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
-    # Database configuration
-    POSTGRES_SERVER: str = os.getenv("PGHOST", "localhost")
-    POSTGRES_USER: str = os.getenv("PGUSER", "postgres")
-    POSTGRES_PASSWORD: str = os.getenv("PGPASSWORD", "postgres")
-    POSTGRES_DB: str = os.getenv("PGDATABASE", "onetask")
-    POSTGRES_PORT: str = os.getenv("PGPORT", "5432")
-    SQLALCHEMY_DATABASE_URI: Optional[PostgresDsn] = os.getenv("DATABASE_URL")
-
-    @field_validator("SQLALCHEMY_DATABASE_URI", mode="before")
-    def assemble_db_connection(cls, v: Optional[str], info) -> Any:
-        if isinstance(v, str):
-            return v
-        values = info.data
-        return PostgresDsn.build(
-            scheme="postgresql",
-            user=values.get("POSTGRES_USER"),
-            password=values.get("POSTGRES_PASSWORD"),
-            host=values.get("POSTGRES_SERVER"),
-            port=values.get("POSTGRES_PORT"),
-            path=f"/{values.get('POSTGRES_DB') or ''}",
-        )
+    # Database configuration with flexible connection options
+    DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL")
+    if not DATABASE_URL:
+        POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "localhost")
+        POSTGRES_USER: str = os.getenv("POSTGRES_USER", "postgres")
+        POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "postgres")
+        POSTGRES_DB: str = os.getenv("POSTGRES_DB", "onetask")
+        POSTGRES_PORT: str = os.getenv("POSTGRES_PORT", "5432")
+        DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
     # JWT configuration
     ALGORITHM: str = "HS256"
-    
+
     # Email configuration
     EMAILS_ENABLED: bool = False
     SMTP_TLS: bool = True
@@ -83,7 +68,7 @@ class Settings(BaseSettings):
     # OpenAI API configuration
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     ENABLE_AI_FEATURES: bool = os.getenv("ENABLE_AI_FEATURES", "true").lower() == "true"
-    
+
     # Integration configuration
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
@@ -91,25 +76,27 @@ class Settings(BaseSettings):
     TODOIST_CLIENT_SECRET: Optional[str] = None
     GITHUB_CLIENT_ID: Optional[str] = None
     GITHUB_CLIENT_SECRET: Optional[str] = None
-    
+
     # Stripe configuration
     STRIPE_SECRET_KEY: Optional[str] = os.getenv("STRIPE_SECRET_KEY")
     STRIPE_PUBLISHABLE_KEY: Optional[str] = None
     STRIPE_WEBHOOK_SECRET: Optional[str] = None
-    
+
     # Admin user
     FIRST_SUPERUSER: Optional[str] = "admin"
     FIRST_SUPERUSER_EMAIL: Optional[EmailStr] = "admin@example.com"
     FIRST_SUPERUSER_PASSWORD: Optional[str] = "admin"
-    
+
     # Application settings
     PROJECT_NAME: str = "OneTask API"
-    SERVER_HOST: str = os.getenv("SERVER_HOST", "http://localhost:5000")
-    
+    # SERVER_HOST is now deprecated in favor of HOST and PORT
+    HOST: str = os.getenv("HOST", "0.0.0.0")
+    PORT: int = int(os.getenv("PORT", 5000))
+
     # Deployment settings
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEBUG: bool = ENVIRONMENT == "development"
-    
+
     model_config = {
         "case_sensitive": True
     }

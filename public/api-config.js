@@ -1,13 +1,9 @@
 
 const API_CONFIG = {
-  BASE_URL: window.location.hostname.includes('replit.app') 
-    ? `https://${window.location.host}/api/v1`
-    : 'http://0.0.0.0:5000/api/v1',
+  // Configurable base URLs for different environments
+  BASE_URL: process.env.API_BASE_URL || 'http://0.0.0.0:5000/api/v1',
+  WS_BASE: process.env.WS_BASE_URL || 'ws://0.0.0.0:5000/ws',
     
-  WS_BASE: window.location.hostname.includes('replit.app')
-    ? `wss://${window.location.host}/ws`
-    : `ws://${window.location.host}/ws`,
-
   endpoints: {
     login: '/login/access-token',
     refresh: '/login/refresh-token',
