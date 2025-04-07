@@ -1,154 +1,105 @@
 # OneTask API Deployment Guide
 
-This guide provides comprehensive instructions for deploying the OneTask API in various environments.
-
 ## Environment Setup
 
-### Local Development Environment
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/yourusername/onetask-api.git
-   cd onetask-api
-   ```
-
-2. **Set up a virtual environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install dependencies:**
-   ```bash
-   pip install .
-   ```
-   This installs all dependencies defined in pyproject.toml.
-
-4. **Configure environment variables:**
+1. **Setup environment variables:**
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
    ```
 
-5. **Start the development server:**
+2. **Configure environment variables:**
+   Required variables:
+   - `SECRET_KEY`: JWT secret key
+   - `ENVIRONMENT`: "development" or "production"
+   - `DATABASE_URL`: PostgreSQL connection string
+   - `OPENAI_API_KEY`: (optional) For AI features
+
+3. **Start the server:**
+
+   Development mode (with auto-reload):
    ```bash
    ./run_dev_server.sh
-   # or
-   python main_uvicorn.py
    ```
 
-### Replit Deployment
+   Production mode:
+   ```bash
+   ./production_server.sh
+   ```
 
-The OneTask API is optimized for Replit deployment:
+## Server Configuration
 
-1. **Set up environment variables:**
-   - Add the following secrets in Replit's Secrets tab:
-     - `SECRET_KEY`: JWT secret key
-     - `SESSION_SECRET`: Session secret key 
-     - `OPENAI_API_KEY`: (optional) For AI features
-     - `ENVIRONMENT`: Set to "production"
+### Development Server (Uvicorn)
+- Auto-reload enabled
+- Full FastAPI functionality
+- Interactive API documentation available
+- Recommended for development
 
-2. **Configure the workflow:**
-   - Use the existing workflow configuration which uses the `production_server.sh` script
+### Production Server (Gunicorn + Uvicorn workers)
+- Optimized for production workloads
+- Multiple worker processes
+- Enhanced stability and performance
+- Proper error handling
 
-3. **Deploy:**
-   - Click the "Run" button to start the server
-   - For permanent deployment, use Replit's deployment feature
-
-## Deployment Scripts
-
-The following deployment scripts are available:
-
-### `run_dev_server.sh`
-- Development server with hot reloading
-- Uses Uvicorn directly
-- Optimized for local development
-
-### `production_server.sh`
-- Production-ready server configuration
-- Uses Gunicorn with Uvicorn workers
-- Includes optimal worker settings and timeouts
-
-### `prestart.sh`
-- Pre-deployment checks and setup
-- Automatically runs database initialization
-- Validates environment variables
-- Loads environment-specific configurations
-
-## Configuration Files
-
-### `.env.example`
-- Template for local environment variables
-
-### `.env.production`
-- Production environment defaults
-- Loaded when `ENVIRONMENT=production`
-
-## Database Migration
-
-Database migration is handled during the prestart script:
-
-```bash
-python -c "from app.db.base import Base; from app.db.session import engine; Base.metadata.create_all(bind=engine)"
-```
-
-For more advanced migration needs, consider implementing Alembic.
 
 ## Health Monitoring
 
-The API includes a health check endpoint at `/health` that monitors:
-- API status
-- Database connectivity
-- Environment configuration
+The API includes health check endpoints:
+- `/health`: Basic server health
+- `/api/v1/health`: Detailed system status
 
-Use this endpoint for monitoring and alerting in production.
+## Security Configuration
 
-## Security Considerations
+1. **JWT Configuration**:
+   - Set strong `SECRET_KEY` in production
+   - Configure token expiration in `app/core/config.py`
 
-1. **JWT Tokens**: Set a strong `SECRET_KEY` in production
-2. **CORS Settings**: Configure `ALLOWED_ORIGINS` to limit cross-origin requests
-3. **Database Security**: Use unique, strong passwords for database access
-4. **API Keys**: Store API keys (like `OPENAI_API_KEY`) securely using environment variables
+2. **CORS Settings**:
+   - Configure allowed origins in `app/core/config.py`
+   - Default allows application frontend origin
+
+3. **Database Security**:
+   - Use strong database passwords
+   - Configure connection pooling appropriately
 
 ## Production Optimization
 
-For production deployment, consider the following optimizations:
-
 1. **Worker Configuration**:
-   - Adjust `--workers` based on available CPU (2-4 x number of cores)
-   - Set appropriate `--timeout` for your workload
+   ```python
+   # gunicorn_conf.py
+   workers = 4  # Adjust based on available CPU
+   worker_class = "uvicorn.workers.UvicornWorker"
+   ```
 
 2. **Database Pooling**:
-   - Adjust database connection pool settings in `app/db/session.py`
+   Configured in `app/db/session.py`
 
 3. **Caching**:
-   - Implement Redis caching for frequent API calls
-
-4. **Rate Limiting**:
-   - Add rate limiting middleware for public endpoints
+   - Implement caching for frequent API calls
+   - Configure Redis if needed
 
 ## Troubleshooting
 
-### Common Issues
+Common issues and solutions:
 
 1. **Database Connection Errors**:
    - Verify `DATABASE_URL` is correct
    - Check database server is running
-   - Ensure network connectivity and firewall settings
+   - Verify network connectivity
 
-2. **Server Won't Start**:
-   - Check port 5000 is available
+2. **Server Start Issues**:
+   - Check port 5000 availability
    - Verify all dependencies are installed
-   - Check log output for specific errors
+   - Check log output for errors
 
 3. **Authentication Issues**:
-   - Verify `SECRET_KEY` is set correctly
-   - Check JWT token expiration settings
+   - Verify `SECRET_KEY` is set
+   - Check JWT token settings
 
-### Logging
+## Logging
 
-Logs are available:
-- In the console when running locally
-- In the Replit console when deployed on Replit
+Logging configuration in `app/core/config.py`:
+- Development: Detailed logging
+- Production: Error-focused logging
 
-For more detailed logging, adjust the `LOG_LEVEL` environment variable.
+Access logs through standard output or configured log handlers.

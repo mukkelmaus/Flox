@@ -1,19 +1,25 @@
-
 # OneTask API Documentation
 
-This document provides detailed information about all available API endpoints in the OneTask application.
-
 ## Base URL
-All API endpoints are prefixed with `/api/v1`
+- Development: `http://0.0.0.0:5000/api/v1`
+- Production: Configure based on your deployment
 
 ## Authentication
-Most endpoints require JWT authentication. Include the token in the Authorization header:
-```
-Authorization: Bearer <your_jwt_token>
-```
+- JWT-based authentication
+- Endpoints:
+  - Login: `POST /login/access-token`
+  - Refresh: `POST /login/refresh-token`
+  - Test: `POST /login/test-token`
+
+## WebSocket Connections
+Base WebSocket endpoints:
+- Notifications: `ws://server/ws/notifications`
+- Tasks: `ws://server/ws/tasks/{workspace_id}`
+- Focus Sessions: `ws://server/ws/focus-session/{session_id}`
+
+All WebSocket connections require JWT token as query parameter: `?token={jwt_token}`
 
 ## Endpoints
-
 ### Authentication
 
 #### Login
@@ -173,20 +179,6 @@ Authorization: Bearer <your_jwt_token>
   - Requires: Authentication
   - Returns: Streak object
 
-### WebSocket Endpoints
-
-#### Task Updates
-- **WS** `/ws/tasks`
-  - Real-time task updates
-  - Requires: Authentication via query parameter
-  - Query params: `token=<your_jwt_token>`
-
-#### Notifications
-- **WS** `/ws/notifications`
-  - Real-time user notifications
-  - Requires: Authentication via query parameter
-  - Query params: `token=<your_jwt_token>`
-
 ### Utility Endpoints
 
 #### Health Check
@@ -199,27 +191,18 @@ Authorization: Bearer <your_jwt_token>
   - Get API information
   - Returns: API metadata
 
-#### API Documentation
-- **GET** `/docs`
-  - Interactive Swagger documentation
-- **GET** `/redoc`
-  - ReDoc documentation
+## API Documentation
+- Swagger UI: `/docs`
+- ReDoc: `/redoc`
+- OpenAPI JSON: `/openapi.json`
 
-## Error Responses
+## Rate Limiting
+- Configured per endpoint
+- Default limits in `app/core/config.py`
 
-All endpoints follow a standard error response format:
-```json
-{
-  "detail": "Error message"
-}
-```
+## Error Handling
+Standard error responses follow RFC 7807 format.
 
-Common HTTP status codes:
-- 200: Success
-- 201: Created
-- 400: Bad Request
-- 401: Unauthorized
-- 403: Forbidden
-- 404: Not Found
-- 422: Validation Error
-- 500: Internal Server Error
+## Versioning
+Current API version: v1
+Version included in URL path: `/api/v1/`
