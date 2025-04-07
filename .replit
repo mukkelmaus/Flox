@@ -5,7 +5,8 @@ channel = "stable-24_05"
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["gunicorn", "--bind", "0.0.0.0:5000", "main:app"]
+run = ["sh", "-c", "gunicorn --bind 0.0.0.0:5000 --workers 4 main:app"]
+build = ["sh", "-c", "python -m pytest"]
 
 [workflows]
 runButton = "Project"
