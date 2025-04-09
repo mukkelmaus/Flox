@@ -20,6 +20,12 @@ Base WebSocket endpoints:
 All WebSocket connections require JWT token as query parameter: `?token={jwt_token}`
 
 ## Endpoints
+
+### Health Check
+- **GET** `/health`
+  - Check system health status including Redis and database connections
+  - Returns: Health check information
+
 ### Authentication
 
 #### Login
@@ -151,6 +157,13 @@ All WebSocket connections require JWT token as query parameter: `?token={jwt_tok
   - Body: `{"task_id": "string", "content": "string"}`
   - Returns: Analysis results
 
+#### Analyze Tasks History
+- **POST** `/ai/analyze-tasks`
+  - AI-powered task analysis for productivity insights
+  - Requires: Authentication, Premium Access
+  - Body: `{"start_date": "string", "end_date": "string", "workspace_id": "number"}`
+  - Returns: Comprehensive task analysis and recommendations
+
 #### Get Suggestions
 - **POST** `/ai/suggest`
   - Get AI-powered task suggestions
@@ -169,6 +182,24 @@ All WebSocket connections require JWT token as query parameter: `?token={jwt_tok
 
 #### Get User Stats
 - **GET** `/gamification/stats`
+  - Get user's gamification statistics
+  - Requires: Authentication
+  - Returns: User stats object
+
+#### Get Leaderboard
+- **GET** `/gamification/leaderboard`
+  - Get user leaderboard
+  - Requires: Authentication
+  - Query params: 
+    - `workspace_id`: Optional workspace ID
+    - `limit`: Maximum entries (1-100, default: 10)
+  - Returns: List of leaderboard entries
+
+#### Check Achievements
+- **POST** `/gamification/achievements/check`
+  - Check and update achievements for current user
+  - Requires: Authentication
+  - Returns: Updated achievements status
   - Get user's gamification statistics
   - Requires: Authentication
   - Returns: User stats object
