@@ -1,97 +1,69 @@
-# Floxari API Documentation
+# OneTask API
 
-Welcome to the Floxari API documentation. This repository contains detailed information about the Floxari API, its endpoints, and how to use them.
+OneTask is an AI-powered task management API designed to provide intelligent task organization and management capabilities. This backend focuses on core functionality while leaving UI concerns to the frontend.
 
-## Introduction
+## Core Features
 
-Floxari is an AI-powered to-do application designed specifically for creatives, individuals with ADHD, and neurodivergent people. It helps users effectively organize, prioritize, and manage their tasks with AI assistance.
+- Task Management with AI Prioritization
+- User Authentication & Authorization
+- Workspace Organization
+- Real-time Notifications via WebSockets
+- External Service Integrations
+- Comprehensive API Documentation
 
-## Contents
+## Technology Stack
 
-The documentation is organized into the following sections:
+- Backend Framework: FastAPI
+- Database: PostgreSQL
+- Authentication: JWT-based
+- Real-time: WebSocket Support
+- AI Integration: OpenAI API
+- Documentation: OpenAPI/Swagger
 
-- [Authentication](authentication.md) - Details about the authentication system
-- [Authentication Implementation](auth-implementation.md) - Technical details of the auth implementation
-- [Developer Guide](developer-guide.md) - Guide for developers working on the project
+## Quick Start
 
-## Getting Started
-
-### Authentication
-
-To use the Floxari API, you'll need to authenticate. The API uses JWT (JSON Web Tokens) for authentication. Here's a quick overview of the authentication flow:
-
-1. Register a new user:
-   ```
-   POST /api/v1/users/
-   {
-     "email": "user@example.com",
-     "username": "username",
-     "password": "password",
-     "full_name": "User Name"
-   }
-   ```
-
-2. Obtain an access token:
-   ```
-   POST /api/v1/login/access-token
-   Form data:
-   - username: user@example.com (or username)
-   - password: password
-   ```
-
-3. Use the token in subsequent requests:
-   ```
-   GET /api/v1/users/me
-   Headers:
-   - Authorization: Bearer <your_token>
-   ```
-
-For more details, see the [Authentication documentation](authentication.md).
-
-### API Endpoints
-
-The API is organized into the following main sections:
-
-- `/api/v1/users/` - User management
-- `/api/v1/tasks/` - Task management
-- `/api/v1/workspaces/` - Workspace management
-- `/api/v1/ai/` - AI-powered features
-- `/api/v1/integrations/` - Third-party integrations
-
-Each section has its own set of endpoints for creating, reading, updating, and deleting resources.
-
-## Running the API
-
-The API can be run in two modes:
-
-1. Development mode (Uvicorn/ASGI):
-   ```bash
-   ./run_dev_server.sh
-   ```
-   This provides full FastAPI functionality, including interactive documentation.
-
-2. Production mode (Gunicorn/WSGI):
-   ```bash
-   ./start.sh
-   ```
-   This is optimized for production use, particularly on Replit.
+1. Set required environment variables in `.env`
+2. Initialize database: `python init_db.py`
+3. Start the server: Click the Run button or use workflow "Start FastAPI"
 
 ## API Documentation
 
-When running in development mode, interactive API documentation is available at:
+Access the interactive API documentation at:
+- Swagger UI: `/docs`
+- ReDoc: `/redoc`
 
-- Swagger UI: http://localhost:5000/docs
-- ReDoc: http://localhost:5000/redoc
+## Development
 
-## Technical Details
+The project follows a clean architecture with:
 
-The API is built with:
+```
+app/
+├── api/          # API endpoints
+├── core/         # Core configuration
+├── db/           # Database setup
+├── models/       # Database models
+├── schemas/      # Data validation
+└── services/     # Business logic
+```
 
-- FastAPI - Modern, high-performance web framework
-- SQLAlchemy - SQL toolkit and ORM
-- Pydantic - Data validation and settings management
-- PostgreSQL - Relational database
-- JSON Web Tokens - Stateless authentication
-- OpenAI API - AI-powered features
+## Testing
 
-For more information, see the [Developer Guide](developer-guide.md).
+Run the test suite:
+```bash
+python -m pytest tests/
+```
+
+## Deployment
+
+Deploy directly on Replit:
+1. Click the "Deploy" button
+2. Choose "Production deployment"
+3. Configure environment variables
+4. Deploy the application
+
+## Resources
+
+- [API Details](./api-details.md)
+- [Authentication Guide](./authentication.md)
+- [Developer Guide](./developer-guide.md)
+- [WebSocket API](./websocket_api.md)
