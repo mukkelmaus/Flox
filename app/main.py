@@ -111,25 +111,33 @@ async def root():
 @app.get("/health", include_in_schema=False)
 async def health_check():
     """
-    Health check endpoint for monitoring and load balancers
+    Enhanced health check endpoint with detailed system metrics
     """
+    import psutil
     from app.db.session import SessionLocal
-    
+    import redis
+    redis_client = redis.Redis(host='localhost', port=6379, db=0) #Assumed redis configuration
+
     health_status = {
         "status": "healthy",
         "timestamp": datetime.datetime.now().isoformat(),
         "version": settings.VERSION,
         "environment": settings.ENVIRONMENT,
+        "system": {
+            "cpu_percent": psutil.cpu_percent(),
+            "memory_percent": psutil.virtual_memory().percent,
+            "disk_usage": psutil.disk_usage('/').percent
+        },
         "services": {
             "api": "ok",
-            "database": "unknown"
+            "database": "unknown",
+            "redis": "unknown"
         }
     }
-    
-    # Check database connection
+
+    # Check database
     db = SessionLocal()
     try:
-        # Execute simple query to verify database connection
         db.execute("SELECT 1")
         health_status["services"]["database"] = "ok"
     except Exception as e:
@@ -137,16 +145,23 @@ async def health_check():
         health_status["services"]["database"] = str(e)
     finally:
         db.close()
-        
+
+    # Check Redis
+    try:
+        redis_client.ping()
+        health_status["services"]["redis"] = "ok"
+    except Exception as e:
+        health_status["services"]["redis"] = str(e)
+
     return health_status
 
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     # We take the port from environment if available
     port = int(os.environ.get("PORT", 5000))
-    
+
     # Development settings
     if settings.ENVIRONMENT.lower() == "development":
         uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)

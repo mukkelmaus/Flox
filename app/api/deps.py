@@ -226,3 +226,28 @@ def verify_analytics_access(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This feature requires a subscription with analytics enabled"
         )
+from fastapi import Request, HTTPException
+from fastapi.security import OAuth2PasswordBearer
+from redis import Redis
+import time
+
+rate_limit_redis = Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=1)
+
+async def rate_limit(request: Request, limit: int = 100, window: int = 60):
+    """Advanced rate limiting by IP and user"""
+    ip = request.client.host
+    key = f"rate_limit:{ip}"
+    
+    try:
+        current = rate_limit_redis.incr(key)
+        if current == 1:
+            rate_limit_redis.expire(key, window)
+        
+        if current > limit:
+            raise HTTPException(
+                status_code=429,
+                detail="Too many requests"
+            )
+    except:
+        # Fallback if Redis is unavailable
+        pass

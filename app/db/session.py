@@ -15,12 +15,22 @@ from app.core.config import settings
 # Database URL from environment variables - convert PostgresDsn to string
 DATABASE_URL = str(settings.DATABASE_URL)
 
-# Create SQLAlchemy engine
+# Create SQLAlchemy engine with optimized pooling
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
     pool_recycle=300,
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=30,
     echo=settings.DEBUG,
+    connect_args={
+        "connect_timeout": 10,
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5
+    }
 )
 
 # Session factory
