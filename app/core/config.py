@@ -90,6 +90,7 @@ class Settings(BaseSettings):
     # Application settings
     PROJECT_NAME: str = "OneTask API"
     VERSION: str = "1.0.0"
+    DESCRIPTION: str = "AI-powered task management API for neurodivergent users"
     SERVER_HOST: str = os.getenv("SERVER_HOST", "https://onetask.replit.app")
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", 5000))
