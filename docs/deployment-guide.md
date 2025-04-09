@@ -1,5 +1,9 @@
 # OneTask API Deployment Guide
 
+> **For Non-Technical Users:** We've created two simplified guides:
+> - [Simple Self-Hosting Guide](./simple-self-hosting-guide.md) - Step by step instructions for hosting on your own server
+> - [Docker Deployment Guide](./docker-deployment-guide.md) - Easiest method using Docker containers
+
 ## Environment Setup
 
 1. **Setup environment variables:**

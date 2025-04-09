@@ -28,8 +28,16 @@ One Task is an AI-powered to-do application designed to support neurodivergent u
 
 1. Clone the repository
 2. Install dependencies: `pip install .` (using pyproject.toml)
-3. Set up environment variables (see `.env.example`)
+3. Set up environment variables: `cp .env.example .env`
 4. Run the development server: `./run_dev_server.sh`
+
+### Deployment Options
+
+We provide multiple deployment guides for different user needs:
+
+- **[Technical Deployment Guide](docs/deployment-guide.md)**: Comprehensive guide for experienced developers
+- **[Simple Self-Hosting Guide](docs/simple-self-hosting-guide.md)**: Step-by-step instructions for non-technical users
+- **[Docker Deployment Guide](docs/docker-deployment-guide.md)**: Easiest deployment method using Docker containers
 
 ### Production Deployment
 
@@ -37,8 +45,6 @@ For production deployment on Replit, use our optimized configuration:
 
 1. Set required environment variables in Replit Secrets
 2. Run the production server: `./production_server.sh`
-
-See the [Deployment Guide](./docs/deployment-guide.md) for detailed instructions.
 
 ## API Documentation
 
