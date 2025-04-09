@@ -90,10 +90,15 @@ class Settings(BaseSettings):
     # Application settings
     PROJECT_NAME: str = "OneTask API"
     VERSION: str = "1.0.0"
-    DESCRIPTION: str = "AI-powered task management API for neurodivergent users"
+    DESCRIPTION: str = "Task management API with AI capabilities"
     SERVER_HOST: str = os.getenv("SERVER_HOST", "https://onetask.replit.app")
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", 5000))
+    
+    # Core API features
+    ENABLE_AI: bool = os.getenv("ENABLE_AI", "false").lower() == "true"
+    ENABLE_WEBSOCKETS: bool = os.getenv("ENABLE_WEBSOCKETS", "true").lower() == "true"
+    MAX_TASKS_PER_USER: int = int(os.getenv("MAX_TASKS_PER_USER", "1000"))
 
     # Deployment settings
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
