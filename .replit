@@ -9,7 +9,7 @@ run = ["sh", "-c", "gunicorn --bind 0.0.0.0:5000 --workers 4 main:app"]
 build = ["sh", "-c", "python -m pytest"]
 
 [workflows]
-runButton = "Project"
+runButton = "Start FastAPI"
 
 [[workflows.workflow]]
 name = "Project"
@@ -34,6 +34,15 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "gunicorn --bind 0.0.0.0:5000 --reuse-port --reload main:app"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Start FastAPI"
+author = 40652693
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "uvicorn main:app --host 0.0.0.0 --port 5000 --reload"
 
 [[ports]]
 localPort = 5000

@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from app.core.config import settings
 
 # Database URL from environment variables - convert PostgresDsn to string
-DATABASE_URL = str(settings.SQLALCHEMY_DATABASE_URI)
+DATABASE_URL = str(settings.DATABASE_URL)
 
 # Create SQLAlchemy engine
 engine = create_engine(
