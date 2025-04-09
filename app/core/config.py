@@ -88,10 +88,10 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER_PASSWORD: Optional[str] = "admin"
 
     # Application settings
-    PROJECT_NAME: str = "OneTask API"
+    PROJECT_NAME: str = "Floxari API"
     VERSION: str = "1.0.0"
     DESCRIPTION: str = "Task management API with AI capabilities"
-    SERVER_HOST: str = os.getenv("SERVER_HOST", "https://onetask.replit.app")
+    SERVER_HOST: str = os.getenv("SERVER_HOST", "https://floxari.replit.app")
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", 5000))
     
