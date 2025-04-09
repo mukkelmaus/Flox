@@ -92,6 +92,7 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     DESCRIPTION: str = "Task management API with AI capabilities"
     SERVER_HOST: str = os.getenv("SERVER_HOST", "https://floxari.replit.app")
+    DOCS_URL: str = os.getenv("DOCS_URL", "https://floxari.replit.app/docs")
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", 5000))
     
