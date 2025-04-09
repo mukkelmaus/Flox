@@ -89,7 +89,7 @@ class Settings(BaseSettings):
 
     # Application settings
     PROJECT_NAME: str = "OneTask API"
-    # SERVER_HOST is now deprecated in favor of HOST and PORT
+    SERVER_HOST: str = os.getenv("SERVER_HOST", "https://onetask.replit.app")
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", 5000))
 
