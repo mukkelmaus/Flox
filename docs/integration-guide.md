@@ -1,10 +1,10 @@
-# OneTask API Integration Guide
+# Floxari API Integration Guide
 
-This guide provides detailed information about integrating the OneTask API with frontend applications, particularly React/TypeScript frontends. It covers authentication flows, state management suggestions, endpoint usage patterns, and real-time features.
+This guide provides detailed information about integrating the Floxari API with frontend applications, particularly React/TypeScript frontends. It covers authentication flows, state management suggestions, endpoint usage patterns, and real-time features.
 
 ## Authentication Flow
 
-OneTask uses JWT (JSON Web Tokens) for authentication. Here's how to implement the authentication flow in your frontend:
+Floxari uses JWT (JSON Web Tokens) for authentication. Here's how to implement the authentication flow in your frontend:
 
 ### 1. User Registration
 
@@ -150,7 +150,7 @@ const ProtectedRoute = ({ children }) => {
 
 ## State Management
 
-For optimal state management with the OneTask API, we recommend using a combination of React Context API for global state and React Query for data fetching and caching.
+For optimal state management with the Floxari API, we recommend using a combination of React Context API for global state and React Query for data fetching and caching.
 
 ### 1. Authentication State
 
@@ -865,6 +865,6 @@ const TaskAnalytics = ({ userId }) => {
 
 ## Conclusion
 
-This integration guide covers the main patterns and approaches for working with the OneTask API. By following these patterns, you can create a robust, maintainable frontend application that takes full advantage of the API's capabilities.
+This integration guide covers the main patterns and approaches for working with the Floxari API. By following these patterns, you can create a robust, maintainable frontend application that takes full advantage of the API's capabilities.
 
 For detailed information about specific endpoints, refer to the OpenAPI documentation available at `/docs` when the API is running.

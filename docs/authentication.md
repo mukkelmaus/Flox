@@ -1,10 +1,10 @@
-# OneTask API Authentication
+# Floxari API Authentication
 
-This document explains the authentication process for the OneTask API.
+This document explains the authentication process for the Floxari API.
 
 ## Overview
 
-OneTask uses JWT (JSON Web Tokens) for authentication. The authentication flow is as follows:
+Floxari uses JWT (JSON Web Tokens) for authentication. The authentication flow is as follows:
 
 1. The client sends user credentials to the `/login/access-token` endpoint.
 2. The server validates the credentials and returns an access token.

@@ -36,7 +36,7 @@ else:
     # Fallback to defaults
     origins = [
         settings.SERVER_HOST,
-        "https://onetask.replit.app",
+        "https://floxari.replit.app",
         "https://*.replit.app"
     ]
     logger.info(f"CORS enabled with default origins: {origins}")
@@ -69,7 +69,7 @@ if os.path.exists(public_dir):
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
     """
-    Custom Swagger UI with OneTask branding
+    Custom Swagger UI with Floxari branding
     """
     return get_swagger_ui_html(
         openapi_url=f"{settings.API_V1_STR}/openapi.json",

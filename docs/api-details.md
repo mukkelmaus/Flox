@@ -1,4 +1,4 @@
-# OneTask API Documentation
+# Floxari API Documentation
 
 ## Base URL
 - Development: `http://0.0.0.0:5000/api/v1`

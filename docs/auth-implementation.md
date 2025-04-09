@@ -1,10 +1,10 @@
 # Authentication System Implementation
 
-This document provides details on the authentication system implementation for the OneTask API.
+This document provides details on the authentication system implementation for the Floxari API.
 
 ## Overview
 
-The OneTask API uses JWT (JSON Web Tokens) for stateless authentication. This provides several benefits:
+The Floxari API uses JWT (JSON Web Tokens) for stateless authentication. This provides several benefits:
 
 - Tokens can be verified without database access
 - Reduced server load compared to session-based auth

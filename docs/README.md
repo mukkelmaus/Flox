@@ -1,10 +1,10 @@
-# OneTask API Documentation
+# Floxari API Documentation
 
-Welcome to the OneTask API documentation. This repository contains detailed information about the OneTask API, its endpoints, and how to use them.
+Welcome to the Floxari API documentation. This repository contains detailed information about the Floxari API, its endpoints, and how to use them.
 
 ## Introduction
 
-OneTask is an AI-powered to-do application designed specifically for creatives, individuals with ADHD, and neurodivergent people. It helps users effectively organize, prioritize, and manage their tasks with AI assistance.
+Floxari is an AI-powered to-do application designed specifically for creatives, individuals with ADHD, and neurodivergent people. It helps users effectively organize, prioritize, and manage their tasks with AI assistance.
 
 ## Contents
 
@@ -18,7 +18,7 @@ The documentation is organized into the following sections:
 
 ### Authentication
 
-To use the OneTask API, you'll need to authenticate. The API uses JWT (JSON Web Tokens) for authentication. Here's a quick overview of the authentication flow:
+To use the Floxari API, you'll need to authenticate. The API uses JWT (JSON Web Tokens) for authentication. Here's a quick overview of the authentication flow:
 
 1. Register a new user:
    ```

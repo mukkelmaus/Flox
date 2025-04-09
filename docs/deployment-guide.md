@@ -1,4 +1,4 @@
-# OneTask API Deployment Guide
+# Floxari API Deployment Guide
 
 > **For Non-Technical Users:** We've created simplified guides:
 > - [Simple Self-Hosting Guide](./simple-self-hosting-guide.md) - Step by step instructions for hosting on your own server

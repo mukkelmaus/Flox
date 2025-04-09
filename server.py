@@ -8,5 +8,5 @@ import uvicorn
 from app.main import app
 
 if __name__ == "__main__":
-    print("Starting OneTask FastAPI server with Uvicorn...")
+    print("Starting Floxari FastAPI server with Uvicorn...")
     uvicorn.run(app, host="0.0.0.0", port=5000, log_level="debug")

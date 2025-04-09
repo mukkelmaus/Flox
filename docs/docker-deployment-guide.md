@@ -1,11 +1,11 @@
-# Simple Docker Deployment Guide for OneTask API
+# Simple Docker Deployment Guide for Floxari API
 
-This guide will help you deploy OneTask API using Docker, which greatly simplifies the process and makes it accessible even if you have limited technical experience.
+This guide will help you deploy Floxari API using Docker, which greatly simplifies the process and makes it accessible even if you have limited technical experience.
 
 ```
 ┌─────────────────────┐     ┌─────────────────────┐
 │                     │     │                     │
-│      Your Server    │     │   OneTask API       │
+│      Your Server    │     │   Floxari API       │
 │                     │     │   Docker Container  │
 │  ┌───────────────┐  │     │                     │
 │  │ Docker        │  │     │  ┌───────────────┐  │
@@ -66,19 +66,19 @@ Log out and log back in for the group change to take effect.
 2. Follow the installation instructions.
 3. Start Docker Desktop after installation.
 
-## Step 2: Download OneTask API
+## Step 2: Download Floxari API
 
 1. **Create a folder** for your project:
    ```bash
-   mkdir onetask-api
-   cd onetask-api
+   mkdir floxari-api
+   cd floxari-api
    ```
 
 2. **Download the necessary files**:
    ```bash
    # Download docker-compose.yml and other files
-   curl -O https://raw.githubusercontent.com/yourusername/onetask-api/main/docker-compose.yml
-   curl -O https://raw.githubusercontent.com/yourusername/onetask-api/main/.env.production
+   curl -O https://raw.githubusercontent.com/yourusername/floxari-api/main/docker-compose.yml
+   curl -O https://raw.githubusercontent.com/yourusername/floxari-api/main/.env.production
    ```
 
 ## Step 3: Configure the Application
@@ -128,7 +128,7 @@ Log out and log back in for the group change to take effect.
        environment:
          - POSTGRES_PASSWORD=postgres
          - POSTGRES_USER=postgres
-         - POSTGRES_DB=onetask
+         - POSTGRES_DB=floxari
        restart: always
        healthcheck:
          test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -137,7 +137,7 @@ Log out and log back in for the group change to take effect.
          retries: 5
      
      api:
-       image: ghcr.io/yourusername/onetask-api:latest
+       image: ghcr.io/yourusername/floxari-api:latest
        # Or use build: . if deploying from source
        depends_on:
          db:
@@ -145,7 +145,7 @@ Log out and log back in for the group change to take effect.
        ports:
          - "5000:5000"
        environment:
-         - DATABASE_URL=postgresql://postgres:postgres@db/onetask
+         - DATABASE_URL=postgresql://postgres:postgres@db/floxari
        env_file:
          - ./.env
        restart: always
@@ -205,7 +205,7 @@ If you want to make your API accessible via a domain name:
 
 3. **Create an Nginx configuration**:
    ```bash
-   sudo nano /etc/nginx/sites-available/onetask
+   sudo nano /etc/nginx/sites-available/floxari
    ```
 
 4. **Add this content**:
@@ -226,7 +226,7 @@ If you want to make your API accessible via a domain name:
 
 5. **Enable the site**:
    ```bash
-   sudo ln -s /etc/nginx/sites-available/onetask /etc/nginx/sites-enabled/
+   sudo ln -s /etc/nginx/sites-available/floxari /etc/nginx/sites-enabled/
    sudo nginx -t
    sudo systemctl restart nginx
    ```
@@ -263,7 +263,7 @@ docker-compose logs -f
 
 ### To backup your database:
 ```bash
-docker-compose exec db pg_dump -U postgres onetask > backup.sql
+docker-compose exec db pg_dump -U postgres floxari > backup.sql
 ```
 
 ## Testing Frontend Connectivity
@@ -273,7 +273,7 @@ After deploying the API with Docker, you'll want to verify frontend applications
 1. **Access the Testing Tool**:
    ```bash
    # Copy the tester file to a convenient location
-   docker cp onetask-api:/app/public/api_connection_test.html ./
+   docker cp floxari-api:/app/public/api_connection_test.html ./
    ```
    Then open `api_connection_test.html` in your browser and update the API URL to point to your deployed server.
 

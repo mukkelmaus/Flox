@@ -1,6 +1,6 @@
-# Simple Self-Hosting Guide for OneTask API
+# Simple Self-Hosting Guide for Floxari API
 
-This guide will help you host the OneTask API on your own server, even if you don't have much technical experience. We'll go through the process step-by-step with clear explanations.
+This guide will help you host the Floxari API on your own server, even if you don't have much technical experience. We'll go through the process step-by-step with clear explanations.
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -8,7 +8,7 @@ This guide will help you host the OneTask API on your own server, even if you do
 │                  Your Server                    │
 │                                                 │
 │  ┌─────────────┐     ┌─────────────────────┐   │
-│  │ PostgreSQL  │     │  OneTask API        │   │
+│  │ PostgreSQL  │     │  Floxari API        │   │
 │  │ Database    │◄────┤  (Python FastAPI)   │   │
 │  └─────────────┘     └─────────────────────┘   │
 │                             ▲                   │
@@ -27,7 +27,7 @@ This guide will help you host the OneTask API on your own server, even if you do
                     └─────────────────┘
 ```
 
-This guide will walk you through setting up both the OneTask API application and its PostgreSQL database on your server.
+This guide will walk you through setting up both the Floxari API application and its PostgreSQL database on your server.
 
 ## What You'll Need
 
@@ -86,19 +86,19 @@ sudo systemctl enable postgresql
 
 2. **Create a database and user**:
    ```
-   createuser onetask_user
-   createdb onetask_db
-   psql -c "ALTER USER onetask_user WITH ENCRYPTED PASSWORD 'choose_a_secure_password';"
-   psql -c "GRANT ALL PRIVILEGES ON DATABASE onetask_db TO onetask_user;"
+   createuser floxari_user
+   createdb floxari_db
+   psql -c "ALTER USER floxari_user WITH ENCRYPTED PASSWORD 'choose_a_secure_password';"
+   psql -c "GRANT ALL PRIVILEGES ON DATABASE floxari_db TO floxari_user;"
    exit
    ```
 
-## Step 5: Install the OneTask API
+## Step 5: Install the Floxari API
 
 1. **Clone the repository**:
    ```
-   git clone https://github.com/yourusername/onetask-api.git
-   cd onetask-api
+   git clone https://github.com/yourusername/floxari-api.git
+   cd floxari-api
    ```
 
 2. **Create a virtual environment**:
@@ -126,7 +126,7 @@ sudo systemctl enable postgresql
 
 3. **Update these important settings**:
    ```
-   DATABASE_URL=postgresql://onetask_user:choose_a_secure_password@localhost/onetask_db
+   DATABASE_URL=postgresql://floxari_user:choose_a_secure_password@localhost/floxari_db
    SECRET_KEY=generate_a_random_string_here
    SESSION_SECRET=generate_another_random_string_here
    ENVIRONMENT=production
@@ -168,40 +168,40 @@ sudo systemctl enable postgresql
 
 1. **Create a service file**:
    ```
-   sudo nano /etc/systemd/system/onetask.service
+   sudo nano /etc/systemd/system/floxari.service
    ```
 
 2. **Add this content** to the file:
    ```
    [Unit]
-   Description=OneTask API
+   Description=Floxari API
    After=network.target postgresql.service
 
    [Service]
    User=your_username
    Group=your_username
-   WorkingDirectory=/path/to/onetask-api
-   ExecStart=/path/to/onetask-api/production_server.sh
+   WorkingDirectory=/path/to/floxari-api
+   ExecStart=/path/to/floxari-api/production_server.sh
    Restart=always
    RestartSec=5
-   Environment=PATH=/path/to/onetask-api/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+   Environment=PATH=/path/to/floxari-api/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
    [Install]
    WantedBy=multi-user.target
    ```
 
-   Replace `your_username` with your actual username and `/path/to/onetask-api` with the actual path.
+   Replace `your_username` with your actual username and `/path/to/floxari-api` with the actual path.
 
 3. **Enable and start the service**:
    ```
    sudo systemctl daemon-reload
-   sudo systemctl enable onetask
-   sudo systemctl start onetask
+   sudo systemctl enable floxari
+   sudo systemctl start floxari
    ```
 
 4. **Check if it's running**:
    ```
-   sudo systemctl status onetask
+   sudo systemctl status floxari
    ```
 
 ## Step 10: Set Up a Domain Name (Optional but Recommended)
@@ -217,7 +217,7 @@ sudo systemctl enable postgresql
 
 4. **Create an Nginx configuration**:
    ```
-   sudo nano /etc/nginx/sites-available/onetask
+   sudo nano /etc/nginx/sites-available/floxari
    ```
 
 5. **Add this content**:
@@ -240,7 +240,7 @@ sudo systemctl enable postgresql
 
 6. **Enable the site**:
    ```
-   sudo ln -s /etc/nginx/sites-available/onetask /etc/nginx/sites-enabled/
+   sudo ln -s /etc/nginx/sites-available/floxari /etc/nginx/sites-enabled/
    sudo nginx -t
    sudo systemctl restart nginx
    ```
@@ -257,11 +257,11 @@ sudo systemctl enable postgresql
 
 1. **To update the application** when changes are available:
    ```
-   cd /path/to/onetask-api
+   cd /path/to/floxari-api
    git pull
    source venv/bin/activate
    pip install .
-   sudo systemctl restart onetask
+   sudo systemctl restart floxari
    ```
 
 2. **To update your server** regularly:
@@ -277,7 +277,7 @@ After deploying your API, you may want to test that frontends can connect to it 
 1. **Use the Built-in Tester**:
    ```bash
    # Copy the tester to your web directory or open directly
-   cp /path/to/onetask-api/public/api_connection_test.html /path/to/webroot/
+   cp /path/to/floxari-api/public/api_connection_test.html /path/to/webroot/
    ```
    Then open `http://your-domain.com/api_connection_test.html` in your browser.
 
@@ -295,13 +295,13 @@ After deploying your API, you may want to test that frontends can connect to it 
 
 ### The application won't start
 
-- Check logs with: `sudo journalctl -u onetask.service -n 50`
+- Check logs with: `sudo journalctl -u floxari.service -n 50`
 - Make sure the database is running: `sudo systemctl status postgresql`
 - Verify your .env file has the correct settings
 
 ### Can't connect to the application
 
-- Check if the service is running: `sudo systemctl status onetask`
+- Check if the service is running: `sudo systemctl status floxari`
 - Check if port 5000 is blocked by a firewall: `sudo ufw status`
 - If using a firewall, allow the port: `sudo ufw allow 80/tcp`
 
