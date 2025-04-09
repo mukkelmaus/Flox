@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OneTask API Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            min-height: 30px;
+        }
+        .setup-section {
+            background-color: #e7f3fe;
+            border-left: 6px solid #2196F3;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        input {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>OneTask API Connection Test</h1>
+    
+    <div class="setup-section">
+        <h3>Setup</h3>
+        <p>Enter your API URL:</p>
+        <input type="text" id="apiUrlInput" placeholder="https://your-api-domain.com" value="http://localhost:5000">
+        <button id="updateUrlButton">Update URL</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>1. Basic API Connection Test</h2>
+        <p>Tests basic connectivity to non-protected endpoints.</p>
+        <button id="testConnectionButton">Test Connection</button>
+        <div id="connectionResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Create Test User</h2>
+        <p>Creates a test user account.</p>
+        <button id="createUserButton">Create Test User</button>
+        <div id="createUserResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Authentication Test</h2>
+        <p>Tests the authentication endpoints.</p>
+        <button id="testAuthButton">Test Authentication</button>
+        <div id="authResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Protected Endpoint Test</h2>
+        <p>Tests access to protected API endpoints.</p>
+        <button id="testProtectedButton">Test Protected Endpoint</button>
+        <div id="protectedResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. WebSocket Connection Test</h2>
+        <p>Tests WebSocket connectivity (requires authentication).</p>
+        <button id="testWebSocketButton">Test WebSocket</button>
+        <div id="webSocketResult" class="result"></div>
+    </div>
+    
+    <script>
+        // Default configuration
+        let apiUrl = 'http://localhost:5000';
+        let wsUrl = apiUrl.replace('http://', 'ws://').replace('https://', 'wss://');
+        let accessToken = '';
+        
+        // Update URL from input
+        document.getElementById('apiUrlInput').value = apiUrl;
+        document.getElementById('updateUrlButton').addEventListener('click', () => {
+            apiUrl = document.getElementById('apiUrlInput').value.trim();
+            wsUrl = apiUrl.replace('http://', 'ws://').replace('https://', 'wss://');
+            alert(`API URL updated to: ${apiUrl}`);
+        });
+        
+        // Basic connection test
+        document.getElementById('testConnectionButton').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('connectionResult');
+            resultDiv.innerHTML = 'Testing connection...';
+            resultDiv.className = 'result';
+            
+            try {
+                // Test the health endpoint
+                const healthResponse = await fetch(`${apiUrl}/health`, {
+                    method: 'GET'
+                });
+                
+                if (healthResponse.ok) {
+                    const healthText = await healthResponse.text();
+                    resultDiv.innerHTML = `Health check: ${healthText}<br>`;
+                    
+                    // Test the root endpoint
+                    const rootResponse = await fetch(`${apiUrl}/`, {
+                        method: 'GET'
+                    });
+                    
+                    if (rootResponse.ok) {
+                        const rootData = await rootResponse.json();
+                        resultDiv.innerHTML += `Root endpoint: ${JSON.stringify(rootData)}<br>`;
+                        resultDiv.innerHTML += '<span class="success">✓ Connection successful!</span>';
+                    } else {
+                        resultDiv.innerHTML += `<span class="error">✗ Root endpoint error: ${rootResponse.status} ${rootResponse.statusText}</span>`;
+                    }
+                } else {
+                    resultDiv.innerHTML = `<span class="error">✗ Health check failed: ${healthResponse.status} ${healthResponse.statusText}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Connection error: ${error.message}</span>`;
+            }
+        });
+        
+        // Create test user
+        document.getElementById('createUserButton').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('createUserResult');
+            resultDiv.innerHTML = 'Creating test user...';
+            resultDiv.className = 'result';
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/v1/users/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        username: 'testuser',
+                        password: 'Password123!',
+                        full_name: 'Test User'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `<span class="success">✓ User created successfully!</span><br>`;
+                    resultDiv.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    if (response.status === 400) {
+                        const error = await response.json();
+                        if (error.detail && (error.detail.includes("already exists") || error.detail.includes("exists"))) {
+                            resultDiv.innerHTML = `<span class="success">✓ Test user already exists (this is OK)</span><br>`;
+                            resultDiv.innerHTML += `<pre>${JSON.stringify(error, null, 2)}</pre>`;
+                        } else {
+                            resultDiv.innerHTML = `<span class="error">✗ Error creating user: ${JSON.stringify(error)}</span>`;
+                        }
+                    } else {
+                        const error = await response.json();
+                        resultDiv.innerHTML = `<span class="error">✗ Error creating user: ${JSON.stringify(error)}</span>`;
+                    }
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Connection error: ${error.message}</span>`;
+            }
+        });
+        
+        // Authentication test
+        document.getElementById('testAuthButton').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('authResult');
+            resultDiv.innerHTML = 'Testing authentication...';
+            resultDiv.className = 'result';
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/v1/login/access-token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({
+                        'username': 'test@example.com',
+                        'password': 'Password123!'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    accessToken = data.access_token;
+                    resultDiv.innerHTML = `<span class="success">✓ Authentication successful!</span><br>`;
+                    resultDiv.innerHTML += `Token type: ${data.token_type}<br>`;
+                    resultDiv.innerHTML += `Token: ${accessToken.substring(0, 20)}...<br>`;
+                } else {
+                    const error = await response.json();
+                    resultDiv.innerHTML = `<span class="error">✗ Authentication failed: ${JSON.stringify(error)}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Connection error: ${error.message}</span>`;
+            }
+        });
+        
+        // Protected endpoint test
+        document.getElementById('testProtectedButton').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('protectedResult');
+            
+            if (!accessToken) {
+                resultDiv.innerHTML = '<span class="error">Please test authentication first to get a token</span>';
+                return;
+            }
+            
+            resultDiv.innerHTML = 'Testing protected endpoint...';
+            resultDiv.className = 'result';
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/v1/users/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `<span class="success">✓ Protected endpoint access successful!</span><br>`;
+                    resultDiv.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    const error = await response.json();
+                    resultDiv.innerHTML = `<span class="error">✗ Protected endpoint access failed: ${JSON.stringify(error)}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Connection error: ${error.message}</span>`;
+            }
+        });
+        
+        // WebSocket test
+        document.getElementById('testWebSocketButton').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('webSocketResult');
+            
+            if (!accessToken) {
+                resultDiv.innerHTML = '<span class="error">Please test authentication first to get a token</span>';
+                return;
+            }
+            
+            resultDiv.innerHTML = 'Testing WebSocket connection...';
+            resultDiv.className = 'result';
+            
+            try {
+                const socket = new WebSocket(`${wsUrl}/ws/notifications?token=${accessToken}`);
+                
+                socket.onopen = () => {
+                    resultDiv.innerHTML = `<span class="success">✓ WebSocket connection established!</span><br>`;
+                    resultDiv.innerHTML += `Connected to: ${wsUrl}/ws/notifications<br>`;
+                    
+                    // Close the connection after 5 seconds
+                    setTimeout(() => {
+                        resultDiv.innerHTML += `Closing connection...<br>`;
+                        socket.close();
+                    }, 5000);
+                };
+                
+                socket.onmessage = (event) => {
+                    resultDiv.innerHTML += `Received message: ${event.data}<br>`;
+                };
+                
+                socket.onerror = (error) => {
+                    resultDiv.innerHTML += `<span class="error">✗ WebSocket error: ${JSON.stringify(error)}</span><br>`;
+                };
+                
+                socket.onclose = (event) => {
+                    if (event.wasClean) {
+                        resultDiv.innerHTML += `Connection closed cleanly, code=${event.code}, reason=${event.reason}<br>`;
+                    } else {
+                        resultDiv.innerHTML += `<span class="error">✗ Connection died unexpectedly</span><br>`;
+                    }
+                };
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ WebSocket connection error: ${error.message}</span>`;
+            }
+        });
+    </script>
+</body>
+</html>

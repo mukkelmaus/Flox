@@ -266,6 +266,27 @@ docker-compose logs -f
 docker-compose exec db pg_dump -U postgres onetask > backup.sql
 ```
 
+## Testing Frontend Connectivity
+
+After deploying the API with Docker, you'll want to verify frontend applications can connect properly:
+
+1. **Access the Testing Tool**:
+   ```bash
+   # Copy the tester file to a convenient location
+   docker cp onetask-api:/app/public/api_connection_test.html ./
+   ```
+   Then open `api_connection_test.html` in your browser and update the API URL to point to your deployed server.
+
+2. **Run the Connection Tests**:
+   - Test basic API connectivity
+   - Create a test user
+   - Test authentication
+   - Verify protected endpoint access
+   - Test WebSocket connectivity (if using real-time features)
+
+3. **For Detailed Frontend Integration Instructions**:
+   - See our [Frontend Connection Guide](./frontend-connection-guide.md)
+
 ## Common Issues and Solutions
 
 ### The Docker containers won't start
@@ -284,6 +305,13 @@ docker-compose exec db pg_dump -U postgres onetask > backup.sql
 
 - Check logs for database errors: `docker-compose logs db`
 - Make sure the DATABASE_URL in docker-compose.yml matches your configuration
+
+### Frontend connection issues
+
+- Check for CORS errors in your browser's developer console
+- Make sure your API's `ALLOWED_ORIGINS` environment variable includes your frontend domain
+- For WebSocket issues, ensure your proxy configuration supports WebSocket connections
+- If using Nginx, verify it has WebSocket support configured correctly
 
 ## Data Persistence
 

@@ -55,11 +55,20 @@ Once the server is running, access the interactive API documentation:
 
 ## Testing
 
+### Backend Testing
+
 Run the API test script to verify functionality:
 
 ```bash
 python test_api.py
 ```
+
+### Frontend Connection Testing
+
+We provide two ways to test front-end connectivity to the API:
+
+1. **Interactive HTML Tester**: Open `public/api_connection_test.html` in your browser to run tests interactively
+2. **Integration Guide**: Follow the [Frontend Connection Guide](docs/frontend-connection-guide.md) for detailed instructions
 
 ## Developer Resources
 

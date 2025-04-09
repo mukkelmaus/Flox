@@ -270,6 +270,27 @@ sudo systemctl enable postgresql
    sudo apt upgrade -y
    ```
 
+## Testing Frontend Connectivity
+
+After deploying your API, you may want to test that frontends can connect to it properly:
+
+1. **Use the Built-in Tester**:
+   ```bash
+   # Copy the tester to your web directory or open directly
+   cp /path/to/onetask-api/public/api_connection_test.html /path/to/webroot/
+   ```
+   Then open `http://your-domain.com/api_connection_test.html` in your browser.
+
+2. **Run Through the Connection Tests**:
+   - Basic connectivity to health endpoints
+   - Creating a test user (if needed)
+   - Authentication flow
+   - Accessing protected endpoints
+   - WebSocket connectivity (if using real-time features)
+
+3. **For Detailed Testing Instructions**:
+   - Refer to the [Frontend Connection Guide](./frontend-connection-guide.md)
+
 ## Common Issues and Solutions
 
 ### The application won't start
@@ -288,6 +309,12 @@ sudo systemctl enable postgresql
 
 - Check your DATABASE_URL in the .env file
 - Make sure the password and database name match what you created
+
+### Frontend connection issues
+
+- Check for CORS errors in your browser's developer console
+- Verify that your API's `ALLOWED_ORIGINS` setting includes your frontend domain
+- For WebSocket issues, ensure your proxy is configured to support WebSocket connections
 
 ## Getting Help
 

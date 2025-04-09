@@ -1,503 +1,528 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OneTask WebSocket Test Client</title>
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <title>OneTask WebSocket Testing Tool</title>
     <style>
         body {
-            padding: 20px;
-            max-width: 1200px;
+            font-family: Arial, sans-serif;
+            max-width: 800px;
             margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
         }
-        
-        .log-container {
-            height: 400px;
-            overflow-y: auto;
+        h1 {
+            color: #333;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .section {
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            padding: 15px;
             margin-bottom: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .output {
+            margin-top: 10px;
             padding: 10px;
-            border-radius: 5px;
-            background-color: var(--bs-dark);
-            color: var(--bs-light);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
         }
-        
-        .notification {
-            margin-bottom: 10px;
-            padding: 10px;
-            border-radius: 5px;
+        input, select {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
         }
-        
-        .notification.task {
-            background-color: rgba(var(--bs-primary-rgb), 0.2);
-            border-left: 4px solid var(--bs-primary);
+        .success {
+            color: green;
         }
-        
-        .notification.achievement {
-            background-color: rgba(var(--bs-warning-rgb), 0.2);
-            border-left: 4px solid var(--bs-warning);
+        .error {
+            color: red;
         }
-        
-        .notification.streak {
-            background-color: rgba(var(--bs-success-rgb), 0.2);
-            border-left: 4px solid var(--bs-success);
+        .info {
+            color: blue;
         }
-        
-        .notification.level-up {
-            background-color: rgba(var(--bs-info-rgb), 0.2);
-            border-left: 4px solid var(--bs-info);
-        }
-        
-        .notification-header {
+        .flex-container {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 5px;
+            gap: 10px;
         }
-        
-        .notification-title {
-            font-weight: bold;
+        .flex-item {
+            flex: 1;
         }
-        
-        .notification-timestamp {
-            font-size: 0.8em;
-            color: var(--bs-secondary);
+        .setup-section {
+            background-color: #e7f3fe;
+            border-left: 6px solid #2196F3;
+            padding: 10px;
+            margin-bottom: 20px;
         }
-        
-        .notification-content {
-            margin-bottom: 5px;
+        .message-form {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
         }
-        
-        .notification-data {
-            font-size: 0.9em;
-            color: var(--bs-secondary);
+        .message-input {
+            flex: 1;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-connected {
+            background-color: green;
+        }
+        .status-disconnected {
+            background-color: red;
+        }
+        .status-connecting {
+            background-color: orange;
         }
     </style>
 </head>
-<body data-bs-theme="dark">
-    <div class="container">
-        <h1 class="mb-4">OneTask WebSocket Test Client</h1>
-        
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Connection Settings</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="server-url" class="form-label">Server URL</label>
-                            <input type="text" class="form-control" id="server-url" value="ws://localhost:8000">
-                        </div>
-                        <div class="mb-3">
-                            <label for="jwt-token" class="form-label">JWT Token</label>
-                            <input type="text" class="form-control" id="jwt-token" placeholder="Your JWT token">
-                        </div>
-                        <div class="mb-3">
-                            <label for="endpoint-type" class="form-label">Endpoint Type</label>
-                            <select class="form-select" id="endpoint-type">
-                                <option value="notifications">Notifications</option>
-                                <option value="tasks">Tasks (Workspace)</option>
-                                <option value="focus">Focus Session</option>
-                            </select>
-                        </div>
-                        <div class="mb-3" id="workspace-id-container" style="display: none;">
-                            <label for="workspace-id" class="form-label">Workspace ID</label>
-                            <input type="number" class="form-control" id="workspace-id" placeholder="Workspace ID">
-                        </div>
-                        <div class="mb-3" id="session-id-container" style="display: none;">
-                            <label for="session-id" class="form-label">Session ID</label>
-                            <input type="text" class="form-control" id="session-id" placeholder="Focus Session ID">
-                        </div>
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-primary" id="connect-btn">Connect</button>
-                            <button class="btn btn-danger" id="disconnect-btn" disabled>Disconnect</button>
-                        </div>
-                    </div>
-                </div>
+<body>
+    <h1>OneTask WebSocket Testing Tool</h1>
+    
+    <div class="setup-section">
+        <h3>Connection Setup</h3>
+        <div class="flex-container">
+            <div class="flex-item">
+                <label for="apiUrl">API URL:</label>
+                <input type="text" id="apiUrl" placeholder="https://your-api-domain.com" value="http://localhost:5000">
             </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Connection Status</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <div class="d-flex align-items-center">
-                                <div class="me-2">Status:</div>
-                                <div id="connection-status" class="badge bg-secondary">Disconnected</div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex align-items-center">
-                                <div class="me-2">Connected URL:</div>
-                                <div id="connected-url" class="text-truncate">-</div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex align-items-center">
-                                <div class="me-2">Connection Time:</div>
-                                <div id="connection-time">-</div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex align-items-center">
-                                <div class="me-2">Messages Received:</div>
-                                <div id="messages-count">0</div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <div>Last Message:</div>
-                                <div id="last-message-time">-</div>
-                            </div>
-                            <div id="last-message" class="text-truncate">-</div>
-                        </div>
-                    </div>
-                </div>
+            <div class="flex-item">
+                <label for="wsProtocol">WebSocket Protocol:</label>
+                <select id="wsProtocol">
+                    <option value="ws:" selected>ws:// (HTTP)</option>
+                    <option value="wss:">wss:// (HTTPS)</option>
+                </select>
             </div>
         </div>
-        
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Message Log</h5>
-                <button class="btn btn-sm btn-outline-danger" id="clear-log-btn">Clear Log</button>
+        <button id="updateConfigButton">Update Configuration</button>
+    </div>
+    
+    <div class="section">
+        <h2>1. Get Authentication Token</h2>
+        <p>You need to get a valid access token before connecting to WebSockets.</p>
+        <div class="flex-container">
+            <div class="flex-item">
+                <label for="email">Email:</label>
+                <input type="email" id="email" placeholder="user@example.com" value="test@example.com">
             </div>
-            <div class="card-body p-0">
-                <div class="log-container" id="message-log"></div>
-            </div>
-        </div>
-        
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Generate Test Events</h5>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-info">
-                    These buttons will call API endpoints to trigger events that will generate WebSocket notifications.
-                    You need to be connected to see the results.
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-success" id="update-streak-btn">Update Streak</button>
-                            <button class="btn btn-warning" id="complete-task-btn">Complete Random Task</button>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-info" id="check-achievements-btn">Check Achievements</button>
-                            <button class="btn btn-primary" id="award-points-btn">Award Points</button>
-                        </div>
-                    </div>
-                </div>
+            <div class="flex-item">
+                <label for="password">Password:</label>
+                <input type="password" id="password" placeholder="Your password" value="Password123!">
             </div>
         </div>
+        <button id="createUserButton">1a. Create Test User</button>
+        <button id="getTokenButton">1b. Get Token</button>
+        <div id="authOutput" class="output"></div>
+    </div>
+    
+    <div class="section">
+        <h2>2. Notifications WebSocket</h2>
+        <p>
+            <span id="notificationStatus" class="status-indicator status-disconnected"></span>
+            Status: <span id="notificationStatusText">Disconnected</span>
+        </p>
+        <button id="connectNotificationsButton">Connect</button>
+        <button id="disconnectNotificationsButton" disabled>Disconnect</button>
+        <div id="notificationsOutput" class="output"></div>
+    </div>
+    
+    <div class="section">
+        <h2>3. Create Workspace (For Tasks WebSocket)</h2>
+        <p>Create a workspace to test the tasks WebSocket.</p>
+        <div class="flex-container">
+            <div class="flex-item">
+                <label for="workspaceName">Workspace Name:</label>
+                <input type="text" id="workspaceName" placeholder="Test Workspace" value="WebSocket Test Workspace">
+            </div>
+        </div>
+        <button id="createWorkspaceButton">Create Workspace</button>
+        <div id="workspaceOutput" class="output"></div>
+    </div>
+    
+    <div class="section">
+        <h2>4. Tasks WebSocket</h2>
+        <p>
+            <span id="tasksStatus" class="status-indicator status-disconnected"></span>
+            Status: <span id="tasksStatusText">Disconnected</span>
+        </p>
+        <button id="connectTasksButton">Connect</button>
+        <button id="disconnectTasksButton" disabled>Disconnect</button>
+        <div class="message-form">
+            <input type="text" id="taskMessage" placeholder="Enter a message to send" class="message-input">
+            <button id="sendTaskMessageButton" disabled>Send</button>
+        </div>
+        <div id="tasksOutput" class="output"></div>
+    </div>
+    
+    <div class="section">
+        <h2>WebSocket Information</h2>
+        <p>This tool helps test WebSocket connections for the OneTask API:</p>
+        <ul>
+            <li><strong>Notifications WebSocket</strong>: Receives real-time notifications</li>
+            <li><strong>Tasks WebSocket</strong>: Bidirectional communication for task updates</li>
+        </ul>
+        <p>WebSocket endpoints:</p>
+        <ul>
+            <li><code>/ws/notifications?token=your_token</code> - For user notifications</li>
+            <li><code>/ws/tasks/{workspace_id}?token=your_token</code> - For workspace tasks</li>
+        </ul>
     </div>
     
     <script>
         // Global variables
-        let socket = null;
-        let connectTime = null;
-        let messageCount = 0;
+        let apiUrl = 'http://localhost:5000';
+        let wsProtocol = 'ws:';
+        let wsUrl = '';
+        let accessToken = '';
+        let workspaceId = '';
+        let notificationsSocket = null;
+        let tasksSocket = null;
         
-        // DOM elements
-        const serverUrlInput = document.getElementById('server-url');
-        const jwtTokenInput = document.getElementById('jwt-token');
-        const endpointTypeSelect = document.getElementById('endpoint-type');
-        const workspaceIdContainer = document.getElementById('workspace-id-container');
-        const workspaceIdInput = document.getElementById('workspace-id');
-        const sessionIdContainer = document.getElementById('session-id-container');
-        const sessionIdInput = document.getElementById('session-id');
-        const connectBtn = document.getElementById('connect-btn');
-        const disconnectBtn = document.getElementById('disconnect-btn');
-        const connectionStatus = document.getElementById('connection-status');
-        const connectedUrl = document.getElementById('connected-url');
-        const connectionTime = document.getElementById('connection-time');
-        const messagesCount = document.getElementById('messages-count');
-        const lastMessageTime = document.getElementById('last-message-time');
-        const lastMessage = document.getElementById('last-message');
-        const messageLog = document.getElementById('message-log');
-        const clearLogBtn = document.getElementById('clear-log-btn');
-        
-        // Test event buttons
-        const updateStreakBtn = document.getElementById('update-streak-btn');
-        const completeTaskBtn = document.getElementById('complete-task-btn');
-        const checkAchievementsBtn = document.getElementById('check-achievements-btn');
-        const awardPointsBtn = document.getElementById('award-points-btn');
-        
-        // Show/hide additional inputs based on endpoint type
-        endpointTypeSelect.addEventListener('change', () => {
-            const selectedType = endpointTypeSelect.value;
-            workspaceIdContainer.style.display = selectedType === 'tasks' ? 'block' : 'none';
-            sessionIdContainer.style.display = selectedType === 'focus' ? 'block' : 'none';
-        });
-        
-        // Connect button click handler
-        connectBtn.addEventListener('click', () => {
-            connect();
-        });
-        
-        // Disconnect button click handler
-        disconnectBtn.addEventListener('click', () => {
-            disconnect();
-        });
-        
-        // Clear log button click handler
-        clearLogBtn.addEventListener('click', () => {
-            messageLog.innerHTML = '';
-        });
-        
-        // Test event buttons click handlers
-        updateStreakBtn.addEventListener('click', () => {
-            callApi('/api/v1/gamification/streak/update', 'POST');
-        });
-        
-        completeTaskBtn.addEventListener('click', () => {
-            // Simplified - in a real app, you'd complete a specific task
-            callApi('/api/v1/tasks/random/complete', 'POST');
-        });
-        
-        checkAchievementsBtn.addEventListener('click', () => {
-            callApi('/api/v1/gamification/achievements/check', 'POST');
-        });
-        
-        awardPointsBtn.addEventListener('click', () => {
-            callApi('/api/v1/gamification/points/award', 'POST', {
-                points: 50,
-                reason: 'Test points award'
-            });
-        });
-        
-        // Connect to WebSocket
-        function connect() {
-            if (socket) {
-                disconnect();
-            }
+        // Update configuration
+        document.getElementById('updateConfigButton').addEventListener('click', () => {
+            apiUrl = document.getElementById('apiUrl').value.trim();
+            wsProtocol = document.getElementById('wsProtocol').value;
             
-            const serverUrl = serverUrlInput.value.trim();
-            const jwtToken = jwtTokenInput.value.trim();
-            const endpointType = endpointTypeSelect.value;
+            // Auto-determine WebSocket URL based on API URL
+            const apiUrlObj = new URL(apiUrl);
+            wsUrl = `${wsProtocol}//${apiUrlObj.host}`;
             
-            if (!serverUrl) {
-                alert('Please enter a server URL');
-                return;
-            }
+            alert(`Configuration updated!\nAPI URL: ${apiUrl}\nWebSocket URL: ${wsUrl}`);
+        });
+        
+        // Helper function to log messages
+        function logMessage(outputId, message, type = 'normal') {
+            const output = document.getElementById(outputId);
+            const timestamp = new Date().toLocaleTimeString();
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type;
+            messageDiv.innerHTML = `[${timestamp}] ${message}`;
+            output.appendChild(messageDiv);
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        // Create test user
+        document.getElementById('createUserButton').addEventListener('click', async () => {
+            const outputId = 'authOutput';
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
             
-            if (!jwtToken) {
-                alert('Please enter a JWT token');
-                return;
-            }
-            
-            let url = '';
-            
-            switch (endpointType) {
-                case 'notifications':
-                    url = `${serverUrl}/ws/notifications?token=${jwtToken}`;
-                    break;
-                case 'tasks':
-                    const workspaceId = workspaceIdInput.value.trim();
-                    if (!workspaceId) {
-                        alert('Please enter a workspace ID');
-                        return;
-                    }
-                    url = `${serverUrl}/ws/tasks/${workspaceId}?token=${jwtToken}`;
-                    break;
-                case 'focus':
-                    const sessionId = sessionIdInput.value.trim();
-                    if (!sessionId) {
-                        alert('Please enter a session ID');
-                        return;
-                    }
-                    url = `${serverUrl}/ws/focus/${sessionId}?token=${jwtToken}`;
-                    break;
-            }
+            logMessage(outputId, 'Creating test user...', 'info');
             
             try {
-                socket = new WebSocket(url);
-                
-                socket.onopen = () => {
-                    connectTime = new Date();
-                    updateConnectionStatus('Connected', 'success');
-                    connectedUrl.textContent = url;
-                    updateConnectionTime();
-                    setInterval(updateConnectionTime, 1000);
-                    
-                    connectBtn.disabled = true;
-                    disconnectBtn.disabled = false;
-                    
-                    logMessage('Connection established', 'system');
-                };
-                
-                socket.onmessage = (event) => {
-                    messageCount++;
-                    messagesCount.textContent = messageCount;
-                    
-                    const now = new Date();
-                    lastMessageTime.textContent = formatTime(now);
-                    
-                    try {
-                        const data = JSON.parse(event.data);
-                        lastMessage.textContent = JSON.stringify(data);
-                        
-                        // Log the message with appropriate formatting based on type
-                        logNotification(data);
-                    } catch (error) {
-                        lastMessage.textContent = event.data;
-                        logMessage(`Raw message: ${event.data}`, 'error');
-                    }
-                };
-                
-                socket.onclose = () => {
-                    updateConnectionStatus('Disconnected', 'secondary');
-                    connectedUrl.textContent = '-';
-                    connectionTime.textContent = '-';
-                    
-                    connectBtn.disabled = false;
-                    disconnectBtn.disabled = true;
-                    
-                    socket = null;
-                    
-                    logMessage('Connection closed', 'system');
-                };
-                
-                socket.onerror = (error) => {
-                    updateConnectionStatus('Error', 'danger');
-                    
-                    logMessage(`WebSocket error: ${error}`, 'error');
-                };
-            } catch (error) {
-                alert(`Error connecting to WebSocket: ${error.message}`);
-            }
-        }
-        
-        // Disconnect from WebSocket
-        function disconnect() {
-            if (socket) {
-                socket.close();
-            }
-        }
-        
-        // Update connection status
-        function updateConnectionStatus(status, badgeClass) {
-            connectionStatus.textContent = status;
-            connectionStatus.className = `badge bg-${badgeClass}`;
-        }
-        
-        // Update connection time
-        function updateConnectionTime() {
-            if (connectTime) {
-                const now = new Date();
-                const diff = Math.floor((now - connectTime) / 1000);
-                
-                const hours = Math.floor(diff / 3600);
-                const minutes = Math.floor((diff % 3600) / 60);
-                const seconds = diff % 60;
-                
-                connectionTime.textContent = 
-                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }
-        }
-        
-        // Format time for display
-        function formatTime(date) {
-            return date.toLocaleTimeString();
-        }
-        
-        // Log a system message
-        function logMessage(message, type) {
-            const element = document.createElement('div');
-            element.className = `notification ${type}`;
-            
-            const now = new Date();
-            
-            element.innerHTML = `
-                <div class="notification-header">
-                    <span class="notification-title">${type.toUpperCase()}</span>
-                    <span class="notification-timestamp">${formatTime(now)}</span>
-                </div>
-                <div class="notification-content">${message}</div>
-            `;
-            
-            messageLog.appendChild(element);
-            messageLog.scrollTop = messageLog.scrollHeight;
-        }
-        
-        // Log a notification message with formatting based on type
-        function logNotification(data) {
-            let type = 'task';
-            if (data.type === 'achievement_unlocked' || data.type === 'achievement_progress') {
-                type = 'achievement';
-            } else if (data.type === 'streak_update') {
-                type = 'streak';
-            } else if (data.type === 'level_up') {
-                type = 'level-up';
-            }
-            
-            const element = document.createElement('div');
-            element.className = `notification ${type}`;
-            
-            const timestamp = data.created_at 
-                ? new Date(data.created_at) 
-                : new Date();
-            
-            element.innerHTML = `
-                <div class="notification-header">
-                    <span class="notification-title">${data.title || data.type}</span>
-                    <span class="notification-timestamp">${formatTime(timestamp)}</span>
-                </div>
-                <div class="notification-content">${data.content || ''}</div>
-                <div class="notification-data">${JSON.stringify(data.data || {})}</div>
-            `;
-            
-            messageLog.appendChild(element);
-            messageLog.scrollTop = messageLog.scrollHeight;
-        }
-        
-        // Call an API endpoint to trigger events
-        async function callApi(url, method, data = null) {
-            if (!jwtTokenInput.value) {
-                alert('Please enter a JWT token');
-                return;
-            }
-            
-            try {
-                // Get the base URL from the WebSocket URL (but switch to http/https)
-                let baseUrl = serverUrlInput.value.trim();
-                if (baseUrl.startsWith('ws://')) {
-                    baseUrl = baseUrl.replace('ws://', 'http://');
-                } else if (baseUrl.startsWith('wss://')) {
-                    baseUrl = baseUrl.replace('wss://', 'https://');
-                }
-                
-                const fullUrl = `${baseUrl}${url}`;
-                
-                const options = {
-                    method,
+                const response = await fetch(`${apiUrl}/api/v1/users/`, {
+                    method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${jwtTokenInput.value}`,
                         'Content-Type': 'application/json'
-                    }
-                };
-                
-                if (data) {
-                    options.body = JSON.stringify(data);
-                }
-                
-                logMessage(`Calling API: ${method} ${url}`, 'system');
-                
-                const response = await fetch(fullUrl, options);
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        username: email,
+                        password: password,
+                        full_name: 'Test User'
+                    })
+                });
                 
                 if (response.ok) {
-                    const result = await response.json();
-                    logMessage(`API call successful: ${JSON.stringify(result)}`, 'system');
+                    const data = await response.json();
+                    logMessage(outputId, 'User created successfully!', 'success');
+                    logMessage(outputId, `User ID: ${data.id}`, 'info');
                 } else {
-                    const error = await response.text();
-                    logMessage(`API call failed: ${error}`, 'error');
+                    const error = await response.json();
+                    if (response.status === 400 && error.detail && error.detail.includes("exists")) {
+                        logMessage(outputId, 'User already exists (this is OK)', 'info');
+                    } else {
+                        logMessage(outputId, `Error creating user: ${JSON.stringify(error)}`, 'error');
+                    }
                 }
             } catch (error) {
-                logMessage(`API call error: ${error.message}`, 'error');
+                logMessage(outputId, `Connection error: ${error.message}`, 'error');
             }
-        }
+        });
+        
+        // Get authentication token
+        document.getElementById('getTokenButton').addEventListener('click', async () => {
+            const outputId = 'authOutput';
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            logMessage(outputId, 'Getting authentication token...', 'info');
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/v1/login/access-token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({
+                        'username': email,
+                        'password': password
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    accessToken = data.access_token;
+                    logMessage(outputId, 'Token received successfully!', 'success');
+                    logMessage(outputId, `Token: ${accessToken.substring(0, 20)}...`, 'info');
+                    
+                    // Enable WebSocket connection buttons
+                    document.getElementById('connectNotificationsButton').disabled = false;
+                } else {
+                    const error = await response.json();
+                    logMessage(outputId, `Error getting token: ${JSON.stringify(error)}`, 'error');
+                }
+            } catch (error) {
+                logMessage(outputId, `Connection error: ${error.message}`, 'error');
+            }
+        });
+        
+        // Connect to notifications WebSocket
+        document.getElementById('connectNotificationsButton').addEventListener('click', () => {
+            const outputId = 'notificationsOutput';
+            
+            if (!accessToken) {
+                logMessage(outputId, 'Please get a token first', 'error');
+                return;
+            }
+            
+            if (notificationsSocket) {
+                notificationsSocket.close();
+            }
+            
+            // Update status
+            document.getElementById('notificationStatus').className = 'status-indicator status-connecting';
+            document.getElementById('notificationStatusText').textContent = 'Connecting...';
+            
+            logMessage(outputId, 'Connecting to notifications WebSocket...', 'info');
+            
+            const notificationsUrl = `${wsUrl}/ws/notifications?token=${accessToken}`;
+            notificationsSocket = new WebSocket(notificationsUrl);
+            
+            notificationsSocket.onopen = () => {
+                logMessage(outputId, 'Connected to notifications WebSocket', 'success');
+                // Update status and buttons
+                document.getElementById('notificationStatus').className = 'status-indicator status-connected';
+                document.getElementById('notificationStatusText').textContent = 'Connected';
+                document.getElementById('connectNotificationsButton').disabled = true;
+                document.getElementById('disconnectNotificationsButton').disabled = false;
+            };
+            
+            notificationsSocket.onmessage = (event) => {
+                logMessage(outputId, `Received: ${event.data}`, 'info');
+            };
+            
+            notificationsSocket.onerror = (error) => {
+                logMessage(outputId, `WebSocket error: ${JSON.stringify(error)}`, 'error');
+            };
+            
+            notificationsSocket.onclose = (event) => {
+                if (event.wasClean) {
+                    logMessage(outputId, `Connection closed cleanly, code=${event.code}, reason=${event.reason}`, 'info');
+                } else {
+                    logMessage(outputId, 'Connection died unexpectedly', 'error');
+                }
+                // Update status and buttons
+                document.getElementById('notificationStatus').className = 'status-indicator status-disconnected';
+                document.getElementById('notificationStatusText').textContent = 'Disconnected';
+                document.getElementById('connectNotificationsButton').disabled = false;
+                document.getElementById('disconnectNotificationsButton').disabled = true;
+            };
+        });
+        
+        // Disconnect from notifications WebSocket
+        document.getElementById('disconnectNotificationsButton').addEventListener('click', () => {
+            const outputId = 'notificationsOutput';
+            
+            if (notificationsSocket) {
+                logMessage(outputId, 'Closing notifications WebSocket connection...', 'info');
+                notificationsSocket.close();
+                notificationsSocket = null;
+            }
+        });
+        
+        // Create workspace
+        document.getElementById('createWorkspaceButton').addEventListener('click', async () => {
+            const outputId = 'workspaceOutput';
+            const workspaceName = document.getElementById('workspaceName').value;
+            
+            if (!accessToken) {
+                logMessage(outputId, 'Please get a token first', 'error');
+                return;
+            }
+            
+            logMessage(outputId, 'Creating workspace...', 'info');
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/v1/workspaces/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: workspaceName,
+                        description: 'Workspace for WebSocket testing'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    workspaceId = data.id;
+                    logMessage(outputId, `Workspace created successfully with ID: ${workspaceId}`, 'success');
+                    
+                    // Enable tasks WebSocket connection button
+                    document.getElementById('connectTasksButton').disabled = false;
+                } else {
+                    const error = await response.json();
+                    logMessage(outputId, `Error creating workspace: ${JSON.stringify(error)}`, 'error');
+                }
+            } catch (error) {
+                logMessage(outputId, `Connection error: ${error.message}`, 'error');
+            }
+        });
+        
+        // Connect to tasks WebSocket
+        document.getElementById('connectTasksButton').addEventListener('click', () => {
+            const outputId = 'tasksOutput';
+            
+            if (!accessToken) {
+                logMessage(outputId, 'Please get a token first', 'error');
+                return;
+            }
+            
+            if (!workspaceId) {
+                logMessage(outputId, 'Please create a workspace first', 'error');
+                return;
+            }
+            
+            if (tasksSocket) {
+                tasksSocket.close();
+            }
+            
+            // Update status
+            document.getElementById('tasksStatus').className = 'status-indicator status-connecting';
+            document.getElementById('tasksStatusText').textContent = 'Connecting...';
+            
+            logMessage(outputId, 'Connecting to tasks WebSocket...', 'info');
+            
+            const tasksUrl = `${wsUrl}/ws/tasks/${workspaceId}?token=${accessToken}`;
+            tasksSocket = new WebSocket(tasksUrl);
+            
+            tasksSocket.onopen = () => {
+                logMessage(outputId, 'Connected to tasks WebSocket', 'success');
+                // Update status and buttons
+                document.getElementById('tasksStatus').className = 'status-indicator status-connected';
+                document.getElementById('tasksStatusText').textContent = 'Connected';
+                document.getElementById('connectTasksButton').disabled = true;
+                document.getElementById('disconnectTasksButton').disabled = false;
+                document.getElementById('sendTaskMessageButton').disabled = false;
+            };
+            
+            tasksSocket.onmessage = (event) => {
+                logMessage(outputId, `Received: ${event.data}`, 'info');
+            };
+            
+            tasksSocket.onerror = (error) => {
+                logMessage(outputId, `WebSocket error: ${JSON.stringify(error)}`, 'error');
+            };
+            
+            tasksSocket.onclose = (event) => {
+                if (event.wasClean) {
+                    logMessage(outputId, `Connection closed cleanly, code=${event.code}, reason=${event.reason}`, 'info');
+                } else {
+                    logMessage(outputId, 'Connection died unexpectedly', 'error');
+                }
+                // Update status and buttons
+                document.getElementById('tasksStatus').className = 'status-indicator status-disconnected';
+                document.getElementById('tasksStatusText').textContent = 'Disconnected';
+                document.getElementById('connectTasksButton').disabled = false;
+                document.getElementById('disconnectTasksButton').disabled = true;
+                document.getElementById('sendTaskMessageButton').disabled = true;
+            };
+        });
+        
+        // Disconnect from tasks WebSocket
+        document.getElementById('disconnectTasksButton').addEventListener('click', () => {
+            const outputId = 'tasksOutput';
+            
+            if (tasksSocket) {
+                logMessage(outputId, 'Closing tasks WebSocket connection...', 'info');
+                tasksSocket.close();
+                tasksSocket = null;
+            }
+        });
+        
+        // Send message to tasks WebSocket
+        document.getElementById('sendTaskMessageButton').addEventListener('click', () => {
+            const outputId = 'tasksOutput';
+            const message = document.getElementById('taskMessage').value;
+            
+            if (!tasksSocket || tasksSocket.readyState !== WebSocket.OPEN) {
+                logMessage(outputId, 'WebSocket is not connected', 'error');
+                return;
+            }
+            
+            if (!message) {
+                logMessage(outputId, 'Please enter a message to send', 'error');
+                return;
+            }
+            
+            try {
+                const messageObj = {
+                    type: "message",
+                    content: message
+                };
+                tasksSocket.send(JSON.stringify(messageObj));
+                logMessage(outputId, `Sent: ${JSON.stringify(messageObj)}`, 'info');
+                document.getElementById('taskMessage').value = '';
+            } catch (error) {
+                logMessage(outputId, `Error sending message: ${error.message}`, 'error');
+            }
+        });
+        
+        // Initialize WebSocket URL based on API URL
+        window.addEventListener('DOMContentLoaded', () => {
+            // Auto-determine WebSocket URL based on initial API URL
+            const apiUrlObj = new URL(apiUrl);
+            wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            document.getElementById('wsProtocol').value = wsProtocol;
+            wsUrl = `${wsProtocol}//${apiUrlObj.host}`;
+            
+            logMessage('authOutput', `Configuration initialized with API URL: ${apiUrl}`, 'info');
+            logMessage('authOutput', `WebSocket URL: ${wsUrl}`, 'info');
+        });
     </script>
 </body>
 </html>

@@ -1,8 +1,9 @@
 # OneTask API Deployment Guide
 
-> **For Non-Technical Users:** We've created two simplified guides:
+> **For Non-Technical Users:** We've created simplified guides:
 > - [Simple Self-Hosting Guide](./simple-self-hosting-guide.md) - Step by step instructions for hosting on your own server
 > - [Docker Deployment Guide](./docker-deployment-guide.md) - Easiest method using Docker containers
+> - [Frontend Connection Guide](./frontend-connection-guide.md) - Testing and connecting your frontend after deployment
 
 ## Environment Setup
 
@@ -99,6 +100,12 @@ Common issues and solutions:
 3. **Authentication Issues**:
    - Verify `SECRET_KEY` is set
    - Check JWT token settings
+   
+4. **Frontend Connection Issues**:
+   - Check CORS settings for your frontend domain
+   - Use the included test tools in `public/api_connection_test.html`
+   - Follow the [Frontend Connection Guide](./frontend-connection-guide.md) for detailed troubleshooting 
+   - For WebSocket issues, ensure your proxy is correctly configured
 
 ## Logging
 
